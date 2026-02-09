@@ -169,8 +169,29 @@ function jsonp(url, cbParam='callback'){
     document.body.appendChild(s);
   });
 }
-function fmtTitle(dateIso, name){
-  const d = new Date(dateIso);
+function parseEventDate(dateStr){
+  // Accepts "YYYY-MM-DD" or ISO; returns a Date at LOCAL midnight for YYYY-MM-DD.
+  const s = String(dateStr || '').trim();
+  if (!s) return new Date(NaN);
+
+  // YYYY-MM-DD -> local midnight (prevents day-before bug)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+
+  // ISO or other -> normal parse
+  return new Date(s);
+}
+function dateKey(dateStr){
+  const d = parseEventDate(dateStr);
+  const t = d.getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function fmtTitle(dateStr, name){
+  const d = parseEventDate(dateStr);
+  if (isNaN(d)) return `${name}`;
   const dow = d.toLocaleDateString(undefined,{weekday:'short'}); // Wed
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
@@ -178,7 +199,7 @@ function fmtTitle(dateIso, name){
   return `${dow} ${mm}.${dd}.${yy} - ${name}`;
 }
 function slugify(name, dateStr){
-  const d = dateStr ? new Date(dateStr) : new Date();
+  const d = dateStr ? parseEventDate(dateStr) : new Date();
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0');
   const base = (name||'event').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
   return `${base}_${y}${m}${da}`;
@@ -252,7 +273,7 @@ function renderEvents(list){
 }
 function upsertEvent(ev){
   eventsMap.set(ev.code, ev);
-  const list=[...eventsMap.values()].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const list=[...eventsMap.values()].sort((a,b)=> dateKey(b.date) - dateKey(a.date));
   renderEvents(list);
 }
 
@@ -262,7 +283,7 @@ async function createEvent(){
   const code=slugify(name, date);
 
   // optimistic add (fast, no flicker)
-  const optimistic = {code, name, date:new Date(date).toISOString(), active:true};
+  const optimistic = {code, name, date:String(date), active:true};
   upsertEvent(optimistic);
 
   btnCreate.setAttribute('disabled','disabled');
@@ -288,7 +309,7 @@ function refreshInBackground(){
       if (r && r.ok && Array.isArray(r.events)){
         eventsMap.clear();
         r.events.forEach(e=> eventsMap.set(e.code, e));
-        const list=[...eventsMap.values()].sort((a,b)=> new Date(b.date)-new Date(a.date));
+        const list=[...eventsMap.values()].sort((a,b)=> dateKey(b.date) - dateKey(a.date));
         renderEvents(list);
         if (list.length===0) eventsEl.innerHTML = `<div class="status">No Active Events.</div>`;
       } else {
@@ -352,7 +373,7 @@ async function loadEventsFirst(){
     const r=await jsonp(`${ENDPOINT_URL}?${j2qs({mode:'listActive'})}`);
     if (r && r.ok && Array.isArray(r.events)){
       eventsMap.clear(); r.events.forEach(ev=> eventsMap.set(ev.code, ev));
-      const list=[...eventsMap.values()].sort((a,b)=> new Date(b.date)-new Date(a.date));
+      const list=[...eventsMap.values()].sort((a,b)=> dateKey(b.date) - dateKey(a.date));
       renderEvents(list);
       if (list.length===0) eventsEl.innerHTML = `<div class="status">No Active Events.</div>`;
     }else{
@@ -366,8 +387,3 @@ window.addEventListener('load', loadEventsFirst);
 </script>
 </body>
 </html>
-
-
-
-
-
