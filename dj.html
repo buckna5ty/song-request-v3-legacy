@@ -36,7 +36,6 @@
 
   .wrap{ max-width:var(--maxw); margin:0 auto; padding:16px 14px 56px; }
 
-  /* Header matching index.html */
   .dce-logo{ text-align:center; margin:14px 0 6px; }
   .dce-logo img{ max-width:min(220px,60vw); height:auto; }
   .page-title{
@@ -60,7 +59,6 @@
     background:#2a2a2a; color:#fff; font-size:15px; padding:0 12px; width:100%;
   }
 
-  /* Inline info row stays reserved (no layout shift) */
   .inline-row{
     display:flex; align-items:center; gap:10px;
     margin-top:8px; min-height:24px;
@@ -69,7 +67,6 @@
   .inline-text.good{ color:#34d399; }
   .inline-text.bad{ color:#ef4444; }
 
-  /* Progress bar (first load / event change) */
   .progress{
     position:relative; height:6px; flex:1 1 240px; max-width:360px;
     background:#2a2a2a; border-radius:999px; overflow:hidden; border:1px solid #333;
@@ -83,7 +80,6 @@
   }
   @keyframes bar{ to{ transform:translateX(100%); } }
 
-  /* Subtle polling spinner (no text) */
   .spin{
     margin-left:auto; width:18px; height:18px; border-radius:50%;
     border:2px solid rgba(255,255,255,.25); border-top-color:#bbb;
@@ -92,7 +88,6 @@
   .spin.show{ display:inline-block; }
   @keyframes spin{ to{ transform:rotate(360deg);} }
 
-  /* Tabs (folder style) */
   .tabs-bar{
     display:flex; align-items:flex-end; gap:0; border-bottom:1px solid var(--border); padding:0 6px; margin-bottom:10px;
   }
@@ -105,7 +100,6 @@
   .tab-btn.active{ background:var(--subsection); transform:translateY(0); }
   .hidden{ display:none!important; }
 
-  /* Collapsibles */
   .collapsible{ background:var(--subsection); border:1px solid var(--border); border-radius:12px; padding:10px; margin-top:10px; }
   .collapsible-header{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
   .twist{ width:18px; height:18px; display:grid; place-items:center; margin-left:8px; }
@@ -123,19 +117,37 @@
     display:grid;
     grid-template-columns:64px 1fr 190px;
     gap:12px;
-    /* Pin children to the TOP so art/buttons don't recenter on expand */
     align-items:start;
   }
   .card.appear{ opacity:0; transform:translateY(8px); }
   .card.appear.card-ready{ transition:opacity .28s ease, transform .28s ease; opacity:1; transform:none; }
   .no-anim *{ transition:none!important; }
 
-  @media (max-width:760px){ .card{ grid-template-columns:64px 1fr; } .card .actions{ grid-column:1/-1; } }
+  @media (max-width:760px){
+    .card{ grid-template-columns:64px 1fr; }
+    .card .actions{ grid-column:1/-1; }
+  }
 
-  .thumb{ width:64px;height:64px;border-radius:10px;background:#1f1f1f;object-fit:cover;display:block; align-self:start; }
+  .thumb{
+    width:64px;height:64px;border-radius:10px;background:#1f1f1f;object-fit:cover;display:block; align-self:start;
+    cursor:pointer;
+  }
   .meta{ min-width:0; }
-  .title{ margin:0 0 2px; font-weight:800; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; }
-  .sub{ margin:0; color:#e6e6e6; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .title{
+    margin:0 0 2px; font-weight:800; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;
+    cursor:pointer;
+    text-decoration:underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  .sub{
+    margin:0; color:#e6e6e6; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    cursor:pointer;
+    text-decoration:underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
 
   .reqline{ display:flex; align-items:center; gap:10px; margin-top:2px; cursor:pointer; user-select:none; }
   .reqline .car{ font-size:18px; line-height:1; font-weight:800; color:#eaeaea; }
@@ -166,7 +178,6 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- Centered logo -->
     <div class="dce-logo">
       <img src="assets/dce-logo.png" alt="David Charles Events" onerror="this.style.display='none'">
     </div>
@@ -176,7 +187,6 @@
       <label for="eventSel">Select Your Event</label>
       <select id="eventSel"></select>
 
-      <!-- Inline info row (reserved height) -->
       <div class="inline-row">
         <span id="inlineText" class="inline-text"></span>
         <div id="inlineProgress" class="progress"></div>
@@ -273,7 +283,7 @@ const artCache=new Map();
 const inFlightByKey = new Map();
 const bucketHoldByKey = new Map();
 
-let initialRequestsLoaded = false; // controls bar vs spinner
+let initialRequestsLoaded = false;
 
 /* ===== Inline UI helpers ===== */
 function showFullLoading(msg='Loading your requests...'){
@@ -307,8 +317,6 @@ function showEventsError(){
 function parseEventDate(dateStr){
   const s = String(dateStr || '').trim();
   if (!s) return new Date(NaN);
-
-  // YYYY-MM-DD -> local midnight
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
     const [y,m,d] = s.split('-').map(Number);
     return new Date(y, m-1, d);
@@ -318,45 +326,132 @@ function parseEventDate(dateStr){
 
 function pad2(n){return String(n).padStart(2,'0');}
 function dow3(n){return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n]||'';}
-function formatHeaderDate(s){ const d=parseEventDate(s); if(isNaN(d))return''; return `${dow3(d.getDay())} ${pad2(d.getMonth()+1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;}
+function formatHeaderDate(s){
+  const d=parseEventDate(s);
+  if(isNaN(d))return'';
+  return `${dow3(d.getDay())} ${pad2(d.getMonth()+1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;
+}
 function keySong(song,artist){ return `${(song||'').toLowerCase()}|${(artist||'').toLowerCase()}`;}
 function escapeHTML(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
+/* ===== Spotify deep link helpers (opens desktop app) ===== */
+function spotifyIdFromUrl(url){
+  const s = String(url || '').trim();
+  if (!s) return null;
+
+  // spotify:track:ID, spotify:artist:ID, spotify:album:ID
+  let m = s.match(/^spotify:(track|artist|album):([A-Za-z0-9]+)$/i);
+  if (m) return { type: m[1].toLowerCase(), id: m[2] };
+
+  // https://open.spotify.com/track/ID?...
+  m = s.match(/open\.spotify\.com\/(track|artist|album)\/([A-Za-z0-9]+)/i);
+  if (m) return { type: m[1].toLowerCase(), id: m[2] };
+
+  return null;
+}
+
+function spotifyUriFromLinkOrSearch({ link, song, artist, kind }){
+  // kind: "track" | "artist" | "album"
+  const parsed = spotifyIdFromUrl(link);
+  if (parsed && parsed.type === kind) return `spotify:${kind}:${parsed.id}`;
+
+  // If link is a track, we can at least open that exact track in app for title clicks
+  if (kind === 'track' && parsed && parsed.type === 'track') return `spotify:track:${parsed.id}`;
+
+  // Fallback: open Spotify desktop app search results
+  const sSong = String(song || '').trim();
+  const sArtist = String(artist || '').trim();
+
+  if (kind === 'artist'){
+    const q = sArtist ? `artist:${sArtist}` : `artist:${sSong}`;
+    return `spotify:search:${encodeURIComponent(q)}`;
+  }
+
+  if (kind === 'album'){
+    // you don't have an album field, so search with what we do have
+    const q = sArtist ? `${sSong} ${sArtist}` : sSong;
+    return `spotify:search:${encodeURIComponent(q)}`;
+  }
+
+  // track search
+  if (sSong && sArtist){
+    return `spotify:search:${encodeURIComponent(`track:${sSong} artist:${sArtist}`)}`;
+  }
+  return `spotify:search:${encodeURIComponent(sSong || sArtist || '')}`;
+}
+
+function openSpotifyUri(uri){
+  // Navigate to spotify: URI (hands off to desktop app)
+  // Note: some browsers block window.open for custom schemes; location.href is most reliable.
+  try{
+    window.location.href = uri;
+  }catch{
+    // no-op
+  }
+}
+
 /* JSONP */
-function jsonp(url,params={}){ const qs=new URLSearchParams(params); const cb='cb_'+Math.random().toString(36).slice(2); qs.set('callback',cb); qs.set('t',Date.now());
-  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+qs.toString();
+function jsonp(url,params={}){
+  const qs=new URLSearchParams(params);
+  const cb='cb_'+Math.random().toString(36).slice(2);
+  qs.set('callback',cb); qs.set('t',Date.now());
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=url+(url.includes('?')?'&':'?')+qs.toString();
     const kill=setTimeout(()=>{cleanup(); rej(new Error('timeout'));},9000);
     function cleanup(){clearTimeout(kill); try{delete window[cb];}catch{} s.remove();}
-    window[cb]=(d)=>{cleanup(); res(d);}; s.onerror=()=>{cleanup(); rej(new Error('jsonp'));}; document.body.appendChild(s);
+    window[cb]=(d)=>{cleanup(); res(d);};
+    s.onerror=()=>{cleanup(); rej(new Error('jsonp'));};
+    document.body.appendChild(s);
   });
 }
 
-/* Artwork */
+/* Artwork (still iTunes for now) */
 async function getArtwork(song,artist){
-  const k=keySong(song,artist); if(artCache.has(k)) return artCache.get(k);
-  try{ const data=await jsonp('https://itunes.apple.com/search',{term:`${song} ${artist}`.trim(),entity:'musicTrack',limit:1});
-    const url=data?.results?.[0]?.artworkUrl100||data?.results?.[0]?.artworkUrl60||''; artCache.set(k,url||''); return url||'';
-  }catch{ artCache.set(k,''); return ''; }
+  const k=keySong(song,artist);
+  if(artCache.has(k)) return artCache.get(k);
+  try{
+    const data=await jsonp('https://itunes.apple.com/search',{term:`${song} ${artist}`.trim(),entity:'musicTrack',limit:1});
+    const url=data?.results?.[0]?.artworkUrl100||data?.results?.[0]?.artworkUrl60||'';
+    artCache.set(k,url||'');
+    return url||'';
+  }catch{
+    artCache.set(k,'');
+    return '';
+  }
 }
 
 /* Events */
 async function loadActiveEvents(){
   showFullLoading('Loading your events...');
   try{
-    const r=await jsonp(ENDPOINT_URL,{mode:'listActive'}); const list=Array.isArray(r?.events)?r.events:[];
+    const r=await jsonp(ENDPOINT_URL,{mode:'listActive'});
+    const list=Array.isArray(r?.events)?r.events:[];
     list.sort((a,b)=>parseEventDate(a.date||0)-parseEventDate(b.date||0));
     eventSel.innerHTML='';
-    if(!list.length){ const opt=document.createElement('option'); opt.value=''; opt.textContent='No active events'; eventSel.appendChild(opt); currentCode=''; showEventsError(); return; }
+    if(!list.length){
+      const opt=document.createElement('option');
+      opt.value='';
+      opt.textContent='No active events';
+      eventSel.appendChild(opt);
+      currentCode='';
+      showEventsError();
+      return;
+    }
     for(const ev of list){
-      const opt=document.createElement('option'); opt.value=ev.code;
-      const d=formatHeaderDate(ev.date); opt.textContent=d?`${d} - ${ev.name}`:(ev.name||ev.code);
+      const opt=document.createElement('option');
+      opt.value=ev.code;
+      const d=formatHeaderDate(ev.date);
+      opt.textContent=d?`${d} - ${ev.name}`:(ev.name||ev.code);
       eventSel.appendChild(opt);
     }
     const pre=(new URLSearchParams(location.search).get('event')||'').trim();
     if(pre&&[...eventSel.options].some(o=>o.value===pre)) eventSel.value=pre;
     currentCode=eventSel.value||'';
     clearInline();
-  }catch{ showEventsError(); }
+  }catch{
+    showEventsError();
+  }
 }
 
 /* Polling */
@@ -390,26 +485,50 @@ function splitBuckets(rows){
   const now = Date.now();
 
   for(const row of rows){
-    const song=row.song_title||row.song||''; const artist=row.artist||''; const k=keySong(song,artist);
+    const song=row.song_title||row.song||'';
+    const artist=row.artist||'';
+    const link=row.link||'';
+    const k=keySong(song,artist);
 
     if(inFlightByKey.has(k)){
       const {target}=inFlightByKey.get(k);
       row.played = target;
     }
 
+    // Requests bucket
     if(!row.played && !removedKeySet.has(k)){
-      let g=bySong.get(k); if(!g){ g={key:k,song,artist,ids:[],names:new Set()}; bySong.set(k,g); }
-      g.ids.push(row.id); if(row.name) g.names.add(row.name);
+      let g=bySong.get(k);
+      if(!g){
+        g={key:k,song,artist,ids:[],names:new Set(), link:''};
+        bySong.set(k,g);
+      }
+      g.ids.push(row.id);
+      if(row.name) g.names.add(row.name);
+      if(!g.link && link) g.link = link; // keep first link we see
     }
+
+    // Played bucket
     if(row.played){
-      let pg=playedGroups.get(k); if(!pg){ pg={key:k,song,artist,ids:[],names:new Set()}; playedGroups.set(k,pg); }
-      pg.ids.push(row.id); if(row.name) pg.names.add(row.name);
+      let pg=playedGroups.get(k);
+      if(!pg){
+        pg={key:k,song,artist,ids:[],names:new Set(), link:''};
+        playedGroups.set(k,pg);
+      }
+      pg.ids.push(row.id);
+      if(row.name) pg.names.add(row.name);
+      if(!pg.link && link) pg.link = link;
     }
-    const kp=`${k}|${(row.name||'').toLowerCase()}`; spamMap.set(kp,(spamMap.get(kp)||0)+1);
+
+    const kp=`${k}|${(row.name||'').toLowerCase()}`;
+    spamMap.set(kp,(spamMap.get(kp)||0)+1);
   }
 
-  let requests=[...bySong.values()].map(g=>({ key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names] }));
-  let played  =[...playedGroups.values()].map(g=>({ key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names] }));
+  let requests=[...bySong.values()].map(g=>({
+    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
+  }));
+  let played  =[...playedGroups.values()].map(g=>({
+    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
+  }));
 
   if (bucketHoldByKey.size){
     const pinTo = (arrFrom, arrTo, keySetToPin) => {
@@ -423,7 +542,8 @@ function splitBuckets(rows){
           if (any){
             const ids = rows.filter(r=> keySong(r.song_title||r.song,r.artist)===key).map(r=>r.id);
             const names=[...new Set(rows.filter(r=> keySong(r.song_title||r.song,r.artist)===key).map(r=>r.name).filter(Boolean))];
-            arrTo.push({ key, song:any.song_title||any.song, artist:any.artist, ids, people:names });
+            const firstLink = (rows.find(r=> keySong(r.song_title||r.song,r.artist)===key && r.link)?.link) || '';
+            arrTo.push({ key, song:any.song_title||any.song, artist:any.artist, ids, people:names, link:firstLink });
           }
         }
       }
@@ -444,7 +564,9 @@ function splitBuckets(rows){
     const rel=rows.filter(r=> keySong(r.song_title||r.song,r.artist)===rk && !r.played);
     if(rel.length){
       const names=[...new Set(rel.map(r=>r.name).filter(Boolean))];
-      const base=rel[0]; removed.push({ key:rk, song:base.song_title||base.song, artist:base.artist, ids:rel.map(r=>r.id), people:names });
+      const base=rel[0];
+      const firstLink = rel.find(r=>r.link)?.link || '';
+      removed.push({ key:rk, song:base.song_title||base.song, artist:base.artist, ids:rel.map(r=>r.id), people:names, link:firstLink });
     }
   }
 
@@ -464,30 +586,89 @@ function splitBuckets(rows){
 function namesBoxHTML(names){
   return `<div class="names-box"><p class="hdr">Requesters</p><ul>${names.map(n=>`<li>${escapeHTML(n)}`).join('')}</ul></div>`;
 }
+
 function buildCardBase(obj){
   const guests=obj.people.length;
   const el=document.createElement('div');
   el.className='card appear';
   el.dataset.key=obj.key;
   el.dataset.ids=JSON.stringify(obj.ids);
+  el.dataset.song=obj.song || '';
+  el.dataset.artist=obj.artist || '';
+  el.dataset.link=obj.link || '';
+
   el.innerHTML=`
     <img class="thumb" alt="">
     <div class="meta">
-      <p class="title">${escapeHTML(obj.song||'Unknown Title')}</p>
-      <p class="sub">${escapeHTML(obj.artist||'Unknown Artist')}</p>
+      <p class="title" title="Open in Spotify">${escapeHTML(obj.song||'Unknown Title')}</p>
+      <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist||'Unknown Artist')}</p>
       <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${guests} guest${guests===1?'':'s'}</span></div>
       ${namesBoxHTML(obj.people)}
     </div>
     <div class="actions"></div>
   `;
-  getArtwork(obj.song,obj.artist).then(src=>{ if(src){ const img=el.querySelector('.thumb'); img.src=src; img.alt=`${obj.song} cover`; }});
-  const box=el.querySelector('.names-box'); const reqline=el.querySelector('.reqline'); const car=reqline.querySelector('.car');
-  reqline.addEventListener('click',()=>{ const open=box.classList.toggle('open'); car.textContent=open?'▾':'▸'; });
+
+  // Artwork
+  getArtwork(obj.song,obj.artist).then(src=>{
+    const img=el.querySelector('.thumb');
+    if(src){ img.src=src; img.alt=`${obj.song} cover`; }
+  });
+
+  // Toggle requesters list
+  const box=el.querySelector('.names-box');
+  const reqline=el.querySelector('.reqline');
+  const car=reqline.querySelector('.car');
+  reqline.addEventListener('click',()=>{
+    const open=box.classList.toggle('open');
+    car.textContent=open?'▾':'▸';
+  });
+
+  // Spotify deep links
+  const titleEl = el.querySelector('.title');
+  const artistEl = el.querySelector('.sub');
+  const thumbEl = el.querySelector('.thumb');
+
+  titleEl.addEventListener('click', ()=>{
+    const uri = spotifyUriFromLinkOrSearch({
+      link: el.dataset.link,
+      song: el.dataset.song,
+      artist: el.dataset.artist,
+      kind: 'track'
+    });
+    openSpotifyUri(uri);
+  });
+
+  artistEl.addEventListener('click', ()=>{
+    // If the request link itself is an artist URL/URI, open it; otherwise search.
+    const uri = spotifyUriFromLinkOrSearch({
+      link: el.dataset.link,
+      song: el.dataset.song,
+      artist: el.dataset.artist,
+      kind: 'artist'
+    });
+    openSpotifyUri(uri);
+  });
+
+  thumbEl.addEventListener('click', ()=>{
+    const uri = spotifyUriFromLinkOrSearch({
+      link: el.dataset.link,
+      song: el.dataset.song,
+      artist: el.dataset.artist,
+      kind: 'album'
+    });
+    openSpotifyUri(uri);
+  });
+
   requestAnimationFrame(()=> el.classList.add('card-ready'));
   return el;
 }
+
 function updateCardBase(node,obj){
   node.dataset.ids=JSON.stringify(obj.ids);
+  node.dataset.song=obj.song || '';
+  node.dataset.artist=obj.artist || '';
+  node.dataset.link=obj.link || '';
+
   node.querySelector('.title').textContent=obj.song||'Unknown Title';
   node.querySelector('.sub').textContent=obj.artist||'Unknown Artist';
   node.querySelector('.txt').textContent=`Requested by ${obj.people.length} guest${obj.people.length===1?'':'s'}`;
@@ -516,7 +697,7 @@ async function togglePlayedForKey(key, ids, targetPlayed){
 
   if (card) card.querySelectorAll('.btn').forEach(b=> b.disabled = false);
   inFlightByKey.delete(key);
-  await fetchRows({background:true});   /* spinner-only after actions */
+  await fetchRows({background:true});
 }
 
 function attachRequestActions(card){
@@ -606,7 +787,8 @@ function renderAll(rows){
 
   spamList.innerHTML='';
   for(const s of spam){
-    const el=document.createElement('div'); el.className='card';
+    const el=document.createElement('div');
+    el.className='card';
     el.innerHTML=`
       <img class="thumb" alt="">
       <div class="meta">
@@ -636,8 +818,13 @@ function initCollapsibles(){
   });
 }
 function setTab(which){
-  if(which==='spam'){ tabSpamBtn.classList.add('active'); tabRequestsBtn.classList.remove('active'); tabSpamPane.classList.remove('hidden'); tabRequestsPane.classList.add('hidden'); }
-  else{ tabRequestsBtn.classList.add('active'); tabSpamBtn.classList.remove('active'); tabRequestsPane.classList.remove('hidden'); tabSpamPane.classList.add('hidden'); }
+  if(which==='spam'){
+    tabSpamBtn.classList.add('active'); tabRequestsBtn.classList.remove('active');
+    tabSpamPane.classList.remove('hidden'); tabRequestsPane.classList.add('hidden');
+  } else {
+    tabRequestsBtn.classList.add('active'); tabSpamBtn.classList.remove('active');
+    tabRequestsPane.classList.remove('hidden'); tabSpamPane.classList.add('hidden');
+  }
 }
 tabRequestsBtn.addEventListener('click',()=>setTab('requests'));
 tabSpamBtn.addEventListener('click',()=>setTab('spam'));
@@ -645,8 +832,8 @@ tabSpamBtn.addEventListener('click',()=>setTab('spam'));
 /* Init */
 eventSel.addEventListener('change', async ()=>{
   currentCode=eventSel.value||''; removedKeySet.clear();
-  initialRequestsLoaded = false;              // full-bar load on event change
-  await fetchRows({background:false});        // show full text + bar
+  initialRequestsLoaded = false;
+  await fetchRows({background:false});
   startPolling();
 });
 
@@ -657,11 +844,10 @@ eventSel.addEventListener('change', async ()=>{
   if(eventSel.value){
     currentCode=eventSel.value;
     initialRequestsLoaded = false;
-    await fetchRows({background:false});      // first load: full bar
-    startPolling();                           // background polls: spinner only
+    await fetchRows({background:false});
+    startPolling();
   }
 })();
 </script>
 </body>
 </html>
-
