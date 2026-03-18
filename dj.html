@@ -17,9 +17,10 @@
     --amber:#f7b731;
     --danger:#b22222;
     --put:#d81b60;
+
     --vip:#f4d35e;
     --vip-bg:rgba(244,211,94,.12);
-    --vip-border:rgba(244,211,94,.48);
+    --vip-border:rgba(244,211,94,.45);
 
     --radius:12px;
     --maxw:1180px;
@@ -103,16 +104,17 @@
 
   .vip-grid{
     display:grid;
-    grid-template-columns: 2fr auto auto;
+    grid-template-columns: 1fr 1fr auto;
     gap:12px;
     margin-top:14px;
     align-items:end;
   }
 
   .vip-status{
-    margin-top:10px;
+    margin-top:0;
     color:#ddd;
     font-size:13px;
+    white-space:nowrap;
   }
 
   .tabs-bar{
@@ -150,7 +152,7 @@
   .card.vip-card{
     background:linear-gradient(180deg, var(--vip-bg) 0%, rgba(54,54,54,.96) 100%);
     border-color:var(--vip-border);
-    box-shadow:0 0 0 1px rgba(244,211,94,.18), 0 8px 18px rgba(0,0,0,.18);
+    box-shadow:0 0 0 1px rgba(244,211,94,.15), 0 8px 18px rgba(0,0,0,.18);
   }
 
   .card.appear{ opacity:0; transform:translateY(8px); }
@@ -160,6 +162,7 @@
   @media (max-width:900px){
     .controls-grid{ grid-template-columns: 1fr 1fr; }
     .vip-grid{ grid-template-columns: 1fr; }
+    .vip-status{ white-space:normal; }
   }
 
   @media (max-width:760px){
@@ -177,15 +180,15 @@
     margin:0 0 2px; font-weight:800; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;
     cursor:pointer;
     text-decoration:underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
+    text-decoration-thickness:1px;
+    text-underline-offset:3px;
   }
   .sub{
     margin:0; color:#e6e6e6; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     cursor:pointer;
     text-decoration:underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
+    text-decoration-thickness:1px;
+    text-underline-offset:3px;
   }
 
   .reqline{
@@ -234,8 +237,8 @@
   .btn.unplayed{ background:var(--amber);  border-color:var(--amber);  color:#000; }
   .btn.remove{   background:var(--danger); border-color:var(--danger); color:#fff; }
   .btn.putback{  background:var(--put);    border-color:var(--put);    color:#fff; }
-  .btn.vipadd{   background:#756212; border-color:#756212; }
-  .btn.vipremove{background:#5b5b5b; border-color:#5b5b5b; }
+  .btn.vipadd{   background:#9b7f11; border-color:#9b7f11; color:#fff; }
+  .btn.vipremove{background:#5b5b5b; border-color:#5b5b5b; color:#fff; }
   .btn[disabled]{ opacity:.7; cursor:not-allowed; }
 
   .footer-line{ margin-top:10px; color:#fff; font-size:12px; }
@@ -244,6 +247,11 @@
     margin-top:6px;
     font-size:12px;
     color:#ffb4b4;
+  }
+
+  .star-option{
+    color:var(--vip);
+    font-weight:700;
   }
 </style>
 </head>
@@ -302,7 +310,7 @@
       <div class="vip-grid">
         <button id="markVipBtn" class="btn vipadd" type="button">Mark as VIP</button>
         <button id="removeVipBtn" class="btn vipremove" type="button">Remove VIP</button>
-        <div id="vipStatus" class="vip-status">VIPs for this event: none</div>
+        <div id="vipStatus" class="vip-status">VIPs for this event: 0</div>
       </div>
     </div>
 
@@ -359,71 +367,87 @@
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxh0I4H0szhTlV21aVA9DCMZXNCjIhZBqgiHSjzWnFlpDZQVW_l5FE1T9eUPEWyEmxufg/exec';
 const POLL_MS = 5000;
 const ACTION_RENDER_LOCK_MS = 1200;
-const ACTION_POLL_PAUSE_MS  = 1500;
-const BUCKET_HOLD_MS        = 2500;
+const ACTION_POLL_PAUSE_MS = 1500;
+const BUCKET_HOLD_MS = 2500;
 
 let renderLockUntil = 0;
 let pollTimer = null;
 let pollPausedUntil = 0;
+
 function lockRender(){ renderLockUntil = Date.now() + ACTION_RENDER_LOCK_MS; }
 function canRender(){ return Date.now() >= renderLockUntil; }
 function pausePolling(){
   pollPausedUntil = Date.now() + ACTION_POLL_PAUSE_MS;
   stopPolling();
-  setTimeout(()=>{ if(Date.now()>=pollPausedUntil) startPolling(); }, ACTION_POLL_PAUSE_MS);
+  setTimeout(function(){
+    if(Date.now() >= pollPausedUntil) startPolling();
+  }, ACTION_POLL_PAUSE_MS);
 }
 
 const $ = s => document.querySelector(s);
-const eventSel=$('#eventSel');
+const eventSel = $('#eventSel');
 
-const inlineText=$('#inlineText');
-const inlineProgress=$('#inlineProgress');
-const inlineSpin=$('#inlineSpin');
+const inlineText = $('#inlineText');
+const inlineProgress = $('#inlineProgress');
+const inlineSpin = $('#inlineSpin');
 
-const sortSel=$('#sortSel');
-const filterSel=$('#filterSel');
-const vipFilterSel=$('#vipFilterSel');
-const requesterVipSel=$('#requesterVipSel');
-const markVipBtn=$('#markVipBtn');
-const removeVipBtn=$('#removeVipBtn');
-const vipStatus=$('#vipStatus');
+const sortSel = $('#sortSel');
+const filterSel = $('#filterSel');
+const vipFilterSel = $('#vipFilterSel');
+const requesterVipSel = $('#requesterVipSel');
+const markVipBtn = $('#markVipBtn');
+const removeVipBtn = $('#removeVipBtn');
+const vipStatus = $('#vipStatus');
 
-const tabRequestsBtn=$('#tabRequests'), tabSpamBtn=$('#tabSpam');
-const tabRequestsPane=$('#tabRequestsPane'), tabSpamPane=$('#tabSpamPane');
+const tabRequestsBtn = $('#tabRequests');
+const tabSpamBtn = $('#tabSpam');
+const tabRequestsPane = $('#tabRequestsPane');
+const tabSpamPane = $('#tabSpamPane');
 
-const reqList=$('#reqList'), playedList=$('#playedList'), removedList=$('#removedList'), spamList=$('#spamList');
-const reqCountEl=$('#reqCount'), playedCountEl=$('#playedCount'), removedCountEl=$('#removedCount'), spamCountTop=$('#spamCountTop');
-const statusLine=$('#statusLine');
+const reqList = $('#reqList');
+const playedList = $('#playedList');
+const removedList = $('#removedList');
+const spamList = $('#spamList');
 
-let currentCode='';
-let rowsCache=[];
-let vipNames=[];
-const artCache=new Map();
-const inFlightByKey = new Map();
-const bucketHoldByKey = new Map();
+const reqCountEl = $('#reqCount');
+const playedCountEl = $('#playedCount');
+const removedCountEl = $('#removedCount');
+const spamCountTop = $('#spamCountTop');
+const statusLine = $('#statusLine');
+
+let currentCode = '';
+let rowsCache = [];
+let vipNames = [];
 let initialRequestsLoaded = false;
 
-function showFullLoading(msg='Loading your requests...'){
-  inlineText.textContent = msg;
+const artCache = new Map();
+const inFlightByKey = new Map();
+const bucketHoldByKey = new Map();
+
+function showFullLoading(msg){
+  inlineText.textContent = msg || 'Loading...';
   inlineText.classList.remove('bad');
   inlineText.classList.add('good');
   inlineProgress.classList.add('show');
   inlineSpin.classList.remove('show');
 }
+
 function showSpinnerOnly(){
   inlineText.textContent = '';
-  inlineText.classList.remove('good','bad');
+  inlineText.classList.remove('good', 'bad');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.add('show');
 }
+
 function clearInline(){
   inlineText.textContent = '';
-  inlineText.classList.remove('good','bad');
+  inlineText.classList.remove('good', 'bad');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.remove('show');
 }
-function showEventsError(){
-  inlineText.textContent = 'Could not load events.';
+
+function showEventsError(msg){
+  inlineText.textContent = msg || 'Could not load events.';
   inlineText.classList.remove('good');
   inlineText.classList.add('bad');
   inlineProgress.classList.remove('show');
@@ -434,26 +458,64 @@ function parseEventDate(dateStr){
   const s = String(dateStr || '').trim();
   if (!s) return new Date(NaN);
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
-    const [y,m,d] = s.split('-').map(Number);
-    return new Date(y, m-1, d);
+    const parts = s.split('-').map(Number);
+    return new Date(parts[0], parts[1]-1, parts[2]);
   }
   return new Date(s);
 }
 
 function pad2(n){ return String(n).padStart(2,'0'); }
-function dow3(n){ return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n]||''; }
+function dow3(n){ return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n] || ''; }
+
 function formatHeaderDate(s){
-  const d=parseEventDate(s);
-  if(isNaN(d))return'';
-  return `${dow3(d.getDay())} ${pad2(d.getMonth()+1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;
+  const d = parseEventDate(s);
+  if (isNaN(d)) return '';
+  return dow3(d.getDay()) + ' ' + pad2(d.getMonth()+1) + '.' + pad2(d.getDate()) + '.' + String(d.getFullYear()).slice(-2);
 }
-function keySong(song,artist){ return `${(song||'').toLowerCase()}|${(artist||'').toLowerCase()}`; }
-function escapeHTML(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function normalizeNameKey(name){ return String(name||'').trim().toLowerCase().replace(/\s+/g,' '); }
+
+function keySong(song, artist){
+  return String(song || '').toLowerCase() + '|' + String(artist || '').toLowerCase();
+}
+
+function escapeHTML(s){
+  return String(s || '').replace(/[&<>"']/g, function(m){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+  });
+}
+
+function normalizeNameKey(name){
+  return String(name || '').trim().toLowerCase().replace(/\s+/g,' ');
+}
 
 function isVipName(name){
   const key = normalizeNameKey(name);
-  return !!key && vipNames.some(v => normalizeNameKey(v) === key);
+  if (!key) return false;
+  return vipNames.some(v => normalizeNameKey(v) === key);
+}
+
+function safeArray(v){
+  return Array.isArray(v) ? v : [];
+}
+
+function safeRow(row){
+  row = row || {};
+  return {
+    timestamp: row.timestamp || '',
+    name: row.name || '',
+    song_title: row.song_title || row.song || '',
+    artist: row.artist || '',
+    link: row.link || '',
+    event: row.event || '',
+    id: row.id || '',
+    played_status: String(row.played_status || '').toLowerCase() || (row.played ? 'played' : 'not played'),
+    played: !!row.played,
+    removed: !!row.removed,
+    forwarded: !!row.forwarded,
+    spam_status: String(row.spam_status || '').toLowerCase(),
+    spam_reason: row.spam_reason || '',
+    spam_count: row.spam_count || 0,
+    is_vip: !!row.is_vip
+  };
 }
 
 function spotifyIdFromUrl(url){
@@ -469,59 +531,82 @@ function spotifyIdFromUrl(url){
   return null;
 }
 
-function spotifyUriFromLinkOrSearch({ link, song, artist, kind }){
-  const parsed = spotifyIdFromUrl(link);
-  if (parsed && parsed.type === kind) return `spotify:${kind}:${parsed.id}`;
-  if (kind === 'track' && parsed && parsed.type === 'track') return `spotify:track:${parsed.id}`;
+function spotifyUriFromLinkOrSearch(obj){
+  obj = obj || {};
+  const parsed = spotifyIdFromUrl(obj.link);
+  const kind = obj.kind || 'track';
+  const song = String(obj.song || '').trim();
+  const artist = String(obj.artist || '').trim();
 
-  const sSong = String(song || '').trim();
-  const sArtist = String(artist || '').trim();
+  if (parsed && parsed.type === kind) return 'spotify:' + kind + ':' + parsed.id;
+  if (kind === 'track' && parsed && parsed.type === 'track') return 'spotify:track:' + parsed.id;
 
   if (kind === 'artist'){
-    const q = sArtist ? `artist:${sArtist}` : `artist:${sSong}`;
-    return `spotify:search:${encodeURIComponent(q)}`;
+    return 'spotify:search:' + encodeURIComponent(artist ? 'artist:' + artist : 'artist:' + song);
   }
-
   if (kind === 'album'){
-    const q = sArtist ? `${sSong} ${sArtist}` : sSong;
-    return `spotify:search:${encodeURIComponent(q)}`;
+    return 'spotify:search:' + encodeURIComponent(artist ? (song + ' ' + artist) : song);
   }
-
-  if (sSong && sArtist){
-    return `spotify:search:${encodeURIComponent(`track:${sSong} artist:${sArtist}`)}`;
+  if (song && artist){
+    return 'spotify:search:' + encodeURIComponent('track:' + song + ' artist:' + artist);
   }
-  return `spotify:search:${encodeURIComponent(sSong || sArtist || '')}`;
+  return 'spotify:search:' + encodeURIComponent(song || artist || '');
 }
 
 function openSpotifyUri(uri){
-  try{ window.location.href = uri; }catch{}
+  try{ window.location.href = uri; }catch(_e){}
 }
 
-function jsonp(url,params={}){
-  const qs=new URLSearchParams(params);
-  const cb='cb_'+Math.random().toString(36).slice(2);
-  qs.set('callback',cb); qs.set('t',Date.now());
-  return new Promise((res,rej)=>{
-    const s=document.createElement('script');
-    s.src=url+(url.includes('?')?'&':'?')+qs.toString();
-    const kill=setTimeout(()=>{cleanup(); rej(new Error('timeout'));},9000);
-    function cleanup(){clearTimeout(kill); try{delete window[cb];}catch{} s.remove();}
-    window[cb]=(d)=>{cleanup(); res(d);};
-    s.onerror=()=>{cleanup(); rej(new Error('jsonp'));};
+function jsonp(url, params){
+  params = params || {};
+  const qs = new URLSearchParams(params);
+  const cb = 'cb_' + Math.random().toString(36).slice(2);
+  qs.set('callback', cb);
+  qs.set('t', Date.now());
+
+  return new Promise(function(resolve, reject){
+    const s = document.createElement('script');
+    s.src = url + (url.includes('?') ? '&' : '?') + qs.toString();
+    const kill = setTimeout(function(){
+      cleanup();
+      reject(new Error('timeout'));
+    }, 9000);
+
+    function cleanup(){
+      clearTimeout(kill);
+      try{ delete window[cb]; }catch(_e){}
+      s.remove();
+    }
+
+    window[cb] = function(data){
+      cleanup();
+      resolve(data);
+    };
+
+    s.onerror = function(){
+      cleanup();
+      reject(new Error('jsonp'));
+    };
+
     document.body.appendChild(s);
   });
 }
 
-async function getArtwork(song,artist){
-  const k=keySong(song,artist);
-  if(artCache.has(k)) return artCache.get(k);
+async function getArtwork(song, artist){
+  const k = keySong(song, artist);
+  if (artCache.has(k)) return artCache.get(k);
+
   try{
-    const data=await jsonp('https://itunes.apple.com/search',{term:`${song} ${artist}`.trim(),entity:'musicTrack',limit:1});
-    const url=data?.results?.[0]?.artworkUrl100||data?.results?.[0]?.artworkUrl60||'';
-    artCache.set(k,url||'');
-    return url||'';
-  }catch{
-    artCache.set(k,'');
+    const data = await jsonp('https://itunes.apple.com/search', {
+      term: (String(song || '') + ' ' + String(artist || '')).trim(),
+      entity: 'musicTrack',
+      limit: 1
+    });
+    const url = (data && data.results && data.results[0] && (data.results[0].artworkUrl100 || data.results[0].artworkUrl60)) || '';
+    artCache.set(k, url || '');
+    return url || '';
+  }catch(_e){
+    artCache.set(k, '');
     return '';
   }
 }
@@ -534,12 +619,17 @@ async function loadVipNames(){
   }
 
   try{
-    const r = await jsonp(ENDPOINT_URL,{mode:'getVipList',event:currentCode});
-    vipNames = Array.isArray(r?.vip_names) ? r.vip_names : [];
-  }catch{
+    const r = await jsonp(ENDPOINT_URL, { mode:'getVipList', event:currentCode });
+    vipNames = safeArray(r && r.vip_names).map(String);
+  }catch(_e){
     vipNames = [];
   }
+
   updateVipUi();
+}
+
+function buildVipOptionLabel(name){
+  return '★ ' + name;
 }
 
 function updateVipUi(){
@@ -551,18 +641,20 @@ function updateVipUi(){
   )];
 
   requesterVipSel.innerHTML = '<option value="">Select requester</option>' +
-    uniqueRequesters.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
+    uniqueRequesters.map(function(name){
+      const label = isVipName(name) ? buildVipOptionLabel(name) : name;
+      return '<option value="' + escapeHTML(name) + '">' + escapeHTML(label) + '</option>';
+    }).join('');
 
   vipFilterSel.innerHTML = '<option value="">All VIPs</option>' +
     vipNames
       .slice()
       .sort((a,b)=>a.localeCompare(b))
-      .map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`)
-      .join('');
+      .map(function(name){
+        return '<option value="' + escapeHTML(name) + '">' + escapeHTML(buildVipOptionLabel(name)) + '</option>';
+      }).join('');
 
-  vipStatus.textContent = vipNames.length
-    ? `VIPs for this event: ${vipNames.join(', ')}`
-    : 'VIPs for this event: none';
+  vipStatus.textContent = 'VIPs for this event: ' + vipNames.length;
 }
 
 async function setVipNameStatus(name, vip){
@@ -573,23 +665,24 @@ async function setVipNameStatus(name, vip){
     const r = await jsonp(ENDPOINT_URL, {
       mode:'setVipNameStatus',
       event:currentCode,
-      name,
+      name:name,
       vip: vip ? '1' : '0'
     });
 
-    if(r?.ok){
-      vipNames = Array.isArray(r.vip_names) ? r.vip_names : [];
-      rowsCache = rowsCache.map(row => {
-        const rowName = String(row.name || '').trim();
-        return { ...row, is_vip: isVipName(rowName) };
+    if(r && r.ok){
+      vipNames = safeArray(r.vip_names).map(String);
+      rowsCache = rowsCache.map(function(row){
+        const updated = Object.assign({}, row);
+        updated.is_vip = isVipName(updated.name);
+        return updated;
       });
       updateVipUi();
       renderAll(rowsCache);
-      statusLine.textContent = vip ? `${name} marked as VIP.` : `${name} removed from VIP.`;
+      statusLine.textContent = vip ? (name + ' marked as VIP.') : (name + ' removed from VIP.');
     }else{
       statusLine.textContent = (r && r.error) ? r.error : 'VIP update failed.';
     }
-  }catch{
+  }catch(_e){
     statusLine.textContent = 'VIP update failed.';
   }finally{
     inlineSpin.classList.remove('show');
@@ -599,44 +692,61 @@ async function setVipNameStatus(name, vip){
 async function loadActiveEvents(){
   showFullLoading('Loading your events...');
   try{
-    const r=await jsonp(ENDPOINT_URL,{mode:'listActive'});
-    const list=Array.isArray(r?.events)?r.events:[];
-    list.sort((a,b)=>parseEventDate(a.date||0)-parseEventDate(b.date||0));
-    eventSel.innerHTML='';
+    const r = await jsonp(ENDPOINT_URL, { mode:'listActive' });
+    const list = safeArray(r && r.events);
+
+    list.sort(function(a,b){
+      return parseEventDate(a.date || 0) - parseEventDate(b.date || 0);
+    });
+
+    eventSel.innerHTML = '';
 
     if(!list.length){
-      const opt=document.createElement('option');
-      opt.value='';
-      opt.textContent='No active events';
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No active events';
       eventSel.appendChild(opt);
-      currentCode='';
+      currentCode = '';
       vipNames = [];
       updateVipUi();
-      showEventsError();
+      showEventsError('No active events found.');
       return;
     }
 
-    for(const ev of list){
-      const opt=document.createElement('option');
-      opt.value=ev.code;
-      const d=formatHeaderDate(ev.date);
-      opt.textContent=d?`${d} - ${ev.name}`:(ev.name||ev.code);
+    list.forEach(function(ev){
+      const opt = document.createElement('option');
+      opt.value = ev.code;
+      const d = formatHeaderDate(ev.date);
+      opt.textContent = d ? (d + ' - ' + (ev.name || ev.code)) : (ev.name || ev.code);
       eventSel.appendChild(opt);
+    });
+
+    const pre = (new URLSearchParams(location.search).get('event') || '').trim();
+    if(pre && [...eventSel.options].some(o => o.value === pre)){
+      eventSel.value = pre;
     }
 
-    const pre=(new URLSearchParams(location.search).get('event')||'').trim();
-    if(pre&&[...eventSel.options].some(o=>o.value===pre)) eventSel.value=pre;
-    currentCode=eventSel.value||'';
+    currentCode = eventSel.value || '';
     clearInline();
-  }catch{
-    showEventsError();
+  }catch(_e){
+    showEventsError('Could not load events.');
   }
 }
 
-function startPolling(){ stopPolling(); pollTimer=setInterval(()=>fetchRows({background:true}), POLL_MS); }
-function stopPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer=null; }
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(function(){ fetchRows({ background:true }); }, POLL_MS);
+}
 
-async function fetchRows({background=false} = {}){
+function stopPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+async function fetchRows(opts){
+  opts = opts || {};
+  const background = !!opts.background;
+
   if(!currentCode) return;
   if(Date.now() < pollPausedUntil) return;
 
@@ -644,66 +754,73 @@ async function fetchRows({background=false} = {}){
   else showSpinnerOnly();
 
   try{
-    const r=await jsonp(ENDPOINT_URL,{mode:'read',event:currentCode});
-    const raw = Array.isArray(r?.rows)?r.rows:[];
-    rowsCache = raw.map(x=>({...x}));
-    vipNames = Array.isArray(r?.vip_names) ? r.vip_names : vipNames;
+    const r = await jsonp(ENDPOINT_URL, { mode:'read', event:currentCode });
+    const rawRows = safeArray(r && r.rows);
+    rowsCache = rawRows.map(safeRow);
+    vipNames = safeArray(r && r.vip_names).map(String);
 
     updateVipUi();
-    if (canRender()) renderAll(rowsCache);
+
+    try{
+      if (canRender()) renderAll(rowsCache);
+      statusLine.textContent = '';
+    }catch(renderErr){
+      console.error('renderAll error:', renderErr);
+      statusLine.textContent = 'Render error loading requests.';
+    }
+
     initialRequestsLoaded = true;
-  }catch{
-    statusLine.textContent='Connection error.';
-  } finally{
+  }catch(fetchErr){
+    console.error('fetchRows error:', fetchErr);
+    statusLine.textContent = 'Connection error.';
+  }finally{
     if (!background) clearInline();
     else inlineSpin.classList.remove('show');
   }
 }
 
 function splitBuckets(rows){
-  const bySong=new Map();
-  const playedGroups=new Map();
-  const removedGroups=new Map();
-  const spamRows=[];
-
+  const bySong = new Map();
+  const playedGroups = new Map();
+  const removedGroups = new Map();
+  const spamRows = [];
   const now = Date.now();
 
-  for(const row of rows){
-    const song=row.song_title||row.song||'';
-    const artist=row.artist||'';
-    const link=row.link||'';
-    const key=keySong(song,artist);
-    const playedStatus = String(row.played_status || '').toLowerCase() || (row.played ? 'played' : 'not played');
+  rows.forEach(function(row){
+    const song = row.song_title || '';
+    const artist = row.artist || '';
+    const link = row.link || '';
+    const key = keySong(song, artist);
+    const playedStatus = String(row.played_status || 'not played').toLowerCase();
     const isSpam = ['possible_spam','spam'].includes(String(row.spam_status || '').toLowerCase());
 
     if(inFlightByKey.has(key)){
-      const {target}=inFlightByKey.get(key);
-      row.played_status = target;
+      const inflight = inFlightByKey.get(key);
+      row.played_status = inflight.target;
     }
 
     if(isSpam){
       spamRows.push({
-        key: `${row.id || key}|spam`,
-        song,
-        artist,
+        key: (row.id || key) + '|spam',
+        song: song,
+        artist: artist,
         name: row.name || 'Guest',
         reason: row.spam_reason || 'spam_detected',
         count: row.spam_count || 1
       });
-      continue;
+      return;
     }
 
-    let targetMap = null;
+    let targetMap = bySong;
     if (playedStatus === 'played') targetMap = playedGroups;
     else if (playedStatus === 'removed') targetMap = removedGroups;
-    else targetMap = bySong;
 
-    let g=targetMap.get(key);
+    let g = targetMap.get(key);
     if(!g){
-      g={
-        key,
-        song,
-        artist,
+      g = {
+        key:key,
+        song:song,
+        artist:artist,
         ids:[],
         people:[],
         peopleSet:new Set(),
@@ -712,10 +829,11 @@ function splitBuckets(rows){
         link:'',
         latestTs:0
       };
-      targetMap.set(key,g);
+      targetMap.set(key, g);
     }
 
     g.ids.push(row.id);
+
     const rowName = String(row.name || '').trim();
     if(rowName && !g.peopleSet.has(rowName)){
       g.peopleSet.add(rowName);
@@ -725,24 +843,27 @@ function splitBuckets(rows){
         g.vipPeople.push(rowName);
       }
     }
+
     if(!g.link && link) g.link = link;
 
     const ts = new Date(row.timestamp || 0).getTime();
     if (!isNaN(ts) && ts > g.latestTs) g.latestTs = ts;
-  }
+  });
 
   function finalize(map){
-    return [...map.values()].map(g=>({
-      key:g.key,
-      song:g.song,
-      artist:g.artist,
-      ids:g.ids,
-      people:g.people,
-      vipPeople:g.vipPeople,
-      isVip:g.vipPeople.length > 0,
-      link:g.link,
-      latestTs:g.latestTs
-    }));
+    return [...map.values()].map(function(g){
+      return {
+        key:g.key,
+        song:g.song,
+        artist:g.artist,
+        ids:g.ids,
+        people:g.people,
+        vipPeople:g.vipPeople,
+        isVip:g.vipPeople.length > 0,
+        link:g.link,
+        latestTs:g.latestTs
+      };
+    });
   }
 
   let requests = finalize(bySong);
@@ -750,75 +871,98 @@ function splitBuckets(rows){
   let removed = finalize(removedGroups);
 
   if (bucketHoldByKey.size){
-    const pinTo = (arrFrom, arrTo, keySetToPin) => {
-      for (const key of keySetToPin){
-        const idx = arrFrom.findIndex(x=>x.key===key);
-        if (idx>=0) arrFrom.splice(idx,1);
-      }
-      for (const key of keySetToPin){
-        if (!arrTo.some(x=>x.key===key)) {
-          const rel = rows.filter(r => keySong(r.song_title||r.song, r.artist) === key);
+    function pinTo(arrFrom, arrTo, keySetToPin){
+      keySetToPin.forEach(function(key){
+        const idx = arrFrom.findIndex(x => x.key === key);
+        if (idx >= 0) arrFrom.splice(idx, 1);
+      });
+
+      keySetToPin.forEach(function(key){
+        if (!arrTo.some(x => x.key === key)) {
+          const rel = rows.filter(function(r){
+            return keySong(r.song_title || r.song, r.artist) === key;
+          });
+
           if (rel.length){
             const base = rel[0];
             const people = [...new Set(rel.map(r => String(r.name || '').trim()).filter(Boolean))];
             const vipPeople = people.filter(isVipName);
-            const firstLink = rel.find(r=>r.link)?.link || '';
-            const latestTs = Math.max(...rel.map(r => new Date(r.timestamp || 0).getTime()).filter(n=>!isNaN(n)), 0);
+            const firstLink = (rel.find(r => r.link) || {}).link || '';
+            const latestTs = Math.max(...rel.map(r => new Date(r.timestamp || 0).getTime()).filter(n => !isNaN(n)), 0);
+
             arrTo.push({
-              key,
-              song:base.song_title||base.song,
-              artist:base.artist,
-              ids:rel.map(r=>r.id),
-              people,
-              vipPeople,
-              isVip: vipPeople.length > 0,
+              key:key,
+              song:base.song_title || base.song || '',
+              artist:base.artist || '',
+              ids:rel.map(r => r.id),
+              people:people,
+              vipPeople:vipPeople,
+              isVip:vipPeople.length > 0,
               link:firstLink,
-              latestTs
+              latestTs:latestTs
             });
           }
         }
-      }
-    };
-
-    const toRequests=new Set(), toPlayed=new Set(), toRemoved=new Set();
-    for (const [key,hold] of bucketHoldByKey.entries()){
-      if (now > hold.until){ bucketHoldByKey.delete(key); continue; }
-      if (hold.bucket==='requests') toRequests.add(key);
-      else if (hold.bucket==='played') toPlayed.add(key);
-      else if (hold.bucket==='removed') toRemoved.add(key);
+      });
     }
-    if (toRequests.size) pinTo(played, requests, toRequests), pinTo(removed, requests, toRequests);
-    if (toPlayed.size)   pinTo(requests, played, toPlayed), pinTo(removed, played, toPlayed);
-    if (toRemoved.size)  pinTo(requests, removed, toRemoved), pinTo(played, removed, toRemoved);
+
+    const toRequests = new Set();
+    const toPlayed = new Set();
+    const toRemoved = new Set();
+
+    for (const [key, hold] of bucketHoldByKey.entries()){
+      if (now > hold.until){
+        bucketHoldByKey.delete(key);
+        continue;
+      }
+      if (hold.bucket === 'requests') toRequests.add(key);
+      else if (hold.bucket === 'played') toPlayed.add(key);
+      else if (hold.bucket === 'removed') toRemoved.add(key);
+    }
+
+    if (toRequests.size){
+      pinTo(played, requests, toRequests);
+      pinTo(removed, requests, toRequests);
+    }
+    if (toPlayed.size){
+      pinTo(requests, played, toPlayed);
+      pinTo(removed, played, toPlayed);
+    }
+    if (toRemoved.size){
+      pinTo(requests, removed, toRemoved);
+      pinTo(played, removed, toRemoved);
+    }
   }
 
   return { requests, played, removed, spam: spamRows };
 }
 
 function namesBoxHTML(names){
-  return `<div class="names-box"><p class="hdr">Requesters</p><ul>${names.map(n=>`<li>${escapeHTML(n)}</li>`).join('')}</ul></div>`;
+  return '<div class="names-box"><p class="hdr">Requesters</p><ul>' +
+    names.map(n => '<li>' + escapeHTML(n) + '</li>').join('') +
+    '</ul></div>';
 }
 
 function buildCardBase(obj){
-  const guests=obj.people.length;
-  const el=document.createElement('div');
-  el.className='card appear' + (obj.isVip ? ' vip-card' : '');
-  el.dataset.key=obj.key;
-  el.dataset.ids=JSON.stringify(obj.ids);
-  el.dataset.song=obj.song || '';
-  el.dataset.artist=obj.artist || '';
-  el.dataset.link=obj.link || '';
+  const guests = obj.people.length;
+  const el = document.createElement('div');
+  el.className = 'card appear' + (obj.isVip ? ' vip-card' : '');
+  el.dataset.key = obj.key;
+  el.dataset.ids = JSON.stringify(obj.ids);
+  el.dataset.song = obj.song || '';
+  el.dataset.artist = obj.artist || '';
+  el.dataset.link = obj.link || '';
 
-  const vipBadge = obj.isVip ? `<span class="vip-badge">VIP</span>` : '';
+  const vipBadge = obj.isVip ? '<span class="vip-badge">VIP</span>' : '';
   const vipPeopleLine = obj.vipPeople.length
-    ? `<div class="vip-people">VIP requester${obj.vipPeople.length === 1 ? '' : 's'}: ${escapeHTML(obj.vipPeople.join(', '))}</div>`
+    ? '<div class="vip-people">VIP requester' + (obj.vipPeople.length === 1 ? '' : 's') + ': ' + escapeHTML(obj.vipPeople.join(', ')) + '</div>'
     : '';
 
-  el.innerHTML=`
+  el.innerHTML = `
     <img class="thumb" alt="">
     <div class="meta">
-      <p class="title" title="Open in Spotify">${escapeHTML(obj.song||'Unknown Title')}</p>
-      <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist||'Unknown Artist')}</p>
+      <p class="title" title="Open in Spotify">${escapeHTML(obj.song || 'Unknown Title')}</p>
+      <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
       <div class="reqline">
         <span class="car">▸</span>
         <span class="txt">Requested by ${guests} guest${guests===1?'':'s'}</span>
@@ -830,67 +974,68 @@ function buildCardBase(obj){
     <div class="actions"></div>
   `;
 
-  getArtwork(obj.song,obj.artist).then(src=>{
-    const img=el.querySelector('.thumb');
-    if(src){ img.src=src; img.alt=`${obj.song} cover`; }
+  getArtwork(obj.song, obj.artist).then(function(src){
+    const img = el.querySelector('.thumb');
+    if(src) {
+      img.src = src;
+      img.alt = obj.song + ' cover';
+    }
   });
 
-  const box=el.querySelector('.names-box');
-  const reqline=el.querySelector('.reqline');
-  const car=reqline.querySelector('.car');
-  reqline.addEventListener('click',()=>{
-    const open=box.classList.toggle('open');
-    car.textContent=open?'▾':'▸';
+  const box = el.querySelector('.names-box');
+  const reqline = el.querySelector('.reqline');
+  const car = reqline.querySelector('.car');
+
+  reqline.addEventListener('click', function(){
+    const open = box.classList.toggle('open');
+    car.textContent = open ? '▾' : '▸';
   });
 
   const titleEl = el.querySelector('.title');
   const artistEl = el.querySelector('.sub');
   const thumbEl = el.querySelector('.thumb');
 
-  titleEl.addEventListener('click', ()=>{
-    const uri = spotifyUriFromLinkOrSearch({
+  titleEl.addEventListener('click', function(){
+    openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'track'
-    });
-    openSpotifyUri(uri);
+    }));
   });
 
-  artistEl.addEventListener('click', ()=>{
-    const uri = spotifyUriFromLinkOrSearch({
+  artistEl.addEventListener('click', function(){
+    openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'artist'
-    });
-    openSpotifyUri(uri);
+    }));
   });
 
-  thumbEl.addEventListener('click', ()=>{
-    const uri = spotifyUriFromLinkOrSearch({
+  thumbEl.addEventListener('click', function(){
+    openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'album'
-    });
-    openSpotifyUri(uri);
+    }));
   });
 
-  requestAnimationFrame(()=> el.classList.add('card-ready'));
+  requestAnimationFrame(function(){ el.classList.add('card-ready'); });
   return el;
 }
 
-function updateCardBase(node,obj){
-  node.className='card' + (node.classList.contains('appear') ? ' appear' : '') + (obj.isVip ? ' vip-card' : '');
-  node.dataset.ids=JSON.stringify(obj.ids);
-  node.dataset.song=obj.song || '';
-  node.dataset.artist=obj.artist || '';
-  node.dataset.link=obj.link || '';
+function updateCardBase(node, obj){
+  node.className = 'card' + (node.classList.contains('appear') ? ' appear' : '') + (obj.isVip ? ' vip-card' : '');
+  node.dataset.ids = JSON.stringify(obj.ids);
+  node.dataset.song = obj.song || '';
+  node.dataset.artist = obj.artist || '';
+  node.dataset.link = obj.link || '';
 
-  node.querySelector('.title').textContent=obj.song||'Unknown Title';
-  node.querySelector('.sub').textContent=obj.artist||'Unknown Artist';
-  node.querySelector('.txt').textContent=`Requested by ${obj.people.length} guest${obj.people.length===1?'':'s'}`;
+  node.querySelector('.title').textContent = obj.song || 'Unknown Title';
+  node.querySelector('.sub').textContent = obj.artist || 'Unknown Artist';
+  node.querySelector('.txt').textContent = 'Requested by ' + obj.people.length + ' guest' + (obj.people.length === 1 ? '' : 's');
 
   let badge = node.querySelector('.vip-badge');
   if (obj.isVip && !badge){
@@ -908,104 +1053,121 @@ function updateCardBase(node,obj){
       vipPeopleLine.className = 'vip-people';
       node.querySelector('.meta').insertBefore(vipPeopleLine, node.querySelector('.names-box'));
     }
-    vipPeopleLine.textContent = `VIP requester${obj.vipPeople.length === 1 ? '' : 's'}: ${obj.vipPeople.join(', ')}`;
+    vipPeopleLine.textContent = 'VIP requester' + (obj.vipPeople.length === 1 ? '' : 's') + ': ' + obj.vipPeople.join(', ');
   } else if (vipPeopleLine){
     vipPeopleLine.remove();
   }
 
-  node.querySelector('.names-box').innerHTML=`<p class="hdr">Requesters</p><ul>${obj.people.map(n=>`<li>${escapeHTML(n)}</li>`).join('')}</ul>`;
+  node.querySelector('.names-box').innerHTML = '<p class="hdr">Requesters</p><ul>' +
+    obj.people.map(n => '<li>' + escapeHTML(n) + '</li>').join('') +
+    '</ul>';
 }
 
 async function setPlayedStatusForKey(key, ids, targetStatus){
-  const now=Date.now();
-  inFlightByKey.set(key,{target:targetStatus, ts:now});
-  bucketHoldByKey.set(key, { bucket: targetStatus === 'played' ? 'played' : (targetStatus === 'removed' ? 'removed' : 'requests'), until: now + BUCKET_HOLD_MS });
+  const now = Date.now();
+  inFlightByKey.set(key, { target:targetStatus, ts:now });
+  bucketHoldByKey.set(key, {
+    bucket: targetStatus === 'played' ? 'played' : (targetStatus === 'removed' ? 'removed' : 'requests'),
+    until: now + BUCKET_HOLD_MS
+  });
 
   lockRender();
   pausePolling();
-  rowsCache = rowsCache.map(r => (ids.includes(r.id) ? {...r, played_status:targetStatus} : r));
+
+  rowsCache = rowsCache.map(function(r){
+    if (ids.includes(r.id)) {
+      const updated = Object.assign({}, r);
+      updated.played_status = targetStatus;
+      return updated;
+    }
+    return r;
+  });
+
   renderAll(rowsCache);
 
-  const card = document.querySelector(`[data-key="${CSS.escape(key)}"]`);
-  if (card) card.querySelectorAll('.btn').forEach(b=> b.disabled = true);
+  const card = document.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key.replace(/"/g,'\\"')) + '"]');
+  if (card) card.querySelectorAll('.btn').forEach(b => b.disabled = true);
 
   try{
-    await Promise.all(ids.map(id => jsonp(ENDPOINT_URL,{mode:'setPlayed',id,status:targetStatus})));
-  }catch{}
+    await Promise.all(ids.map(function(id){
+      return jsonp(ENDPOINT_URL, { mode:'setPlayed', id:id, status:targetStatus });
+    }));
+  }catch(_e){}
 
   const final = inFlightByKey.get(key);
   if (!final || final.ts !== now) return;
 
-  if (card) card.querySelectorAll('.btn').forEach(b=> b.disabled = false);
+  if (card) card.querySelectorAll('.btn').forEach(b => b.disabled = false);
   inFlightByKey.delete(key);
-  await fetchRows({background:true});
+  await fetchRows({ background:true });
 }
 
 function attachRequestActions(card){
-  const actions=card.querySelector('.actions');
-  actions.innerHTML=`
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
     <button class="btn played" type="button">Mark as Played</button>
     <button class="btn remove" type="button">Remove</button>
   `;
-  actions.querySelector('.btn.played').addEventListener('click', ()=>{
-    const ids=JSON.parse(card.dataset.ids||'[]');
+  actions.querySelector('.btn.played').addEventListener('click', function(){
+    const ids = JSON.parse(card.dataset.ids || '[]');
     setPlayedStatusForKey(card.dataset.key, ids, 'played');
   });
-  actions.querySelector('.btn.remove').addEventListener('click', ()=>{
-    const ids=JSON.parse(card.dataset.ids||'[]');
+  actions.querySelector('.btn.remove').addEventListener('click', function(){
+    const ids = JSON.parse(card.dataset.ids || '[]');
     setPlayedStatusForKey(card.dataset.key, ids, 'removed');
   });
 }
 
 function attachPlayedActions(card){
-  const actions=card.querySelector('.actions');
-  actions.innerHTML=`
-    <button class="btn unplayed" type="button">Mark as Not Played</button>
-  `;
-  actions.querySelector('.btn.unplayed').addEventListener('click', ()=>{
-    const ids=JSON.parse(card.dataset.ids||'[]');
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `<button class="btn unplayed" type="button">Mark as Not Played</button>`;
+  actions.querySelector('.btn.unplayed').addEventListener('click', function(){
+    const ids = JSON.parse(card.dataset.ids || '[]');
     setPlayedStatusForKey(card.dataset.key, ids, 'not played');
   });
 }
 
 function attachRemovedActions(card){
-  const actions=card.querySelector('.actions');
-  actions.innerHTML=`
-    <button class="btn putback" type="button">Put Back</button>
-  `;
-  actions.querySelector('.btn.putback').addEventListener('click', ()=>{
-    const ids=JSON.parse(card.dataset.ids||'[]');
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `<button class="btn putback" type="button">Put Back</button>`;
+  actions.querySelector('.btn.putback').addEventListener('click', function(){
+    const ids = JSON.parse(card.dataset.ids || '[]');
     setPlayedStatusForKey(card.dataset.key, ids, 'not played');
   });
 }
 
 function renderList(container, items, makeNode, updateNode){
   const existing = new Map();
-  Array.from(container.children).forEach(ch=> existing.set(ch.dataset.key, ch));
-  existing.forEach((node,key)=>{ if(!items.some(it=>it.key===key)) node.remove(); });
+  Array.from(container.children).forEach(function(ch){ existing.set(ch.dataset.key, ch); });
+
+  existing.forEach(function(node, key){
+    if(!items.some(function(it){ return it.key === key; })){
+      node.remove();
+    }
+  });
 
   container.classList.add('no-anim');
 
   let cursor = container.firstChild;
-  for(const it of items){
+  items.forEach(function(it){
     let node = existing.get(it.key);
     if(!node){
       node = makeNode(it);
       container.insertBefore(node, cursor || null);
     }else{
-      updateNode(node,it);
+      updateNode(node, it);
       if(node !== cursor){
         container.insertBefore(node, cursor || null);
       }
     }
     cursor = node.nextSibling;
-  }
+  });
 
-  requestAnimationFrame(()=> container.classList.remove('no-anim'));
+  requestAnimationFrame(function(){ container.classList.remove('no-anim'); });
 }
 
 function applyRequestFiltersAndSorts(requests){
-  let out = [...requests];
+  let out = requests.slice();
 
   const filterMode = filterSel.value;
   const vipPerson = vipFilterSel.value;
@@ -1018,22 +1180,26 @@ function applyRequestFiltersAndSorts(requests){
 
   if (vipPerson){
     const vipKey = normalizeNameKey(vipPerson);
-    out = out.filter(x => x.vipPeople.some(name => normalizeNameKey(name) === vipKey));
+    out = out.filter(function(x){
+      return x.vipPeople.some(function(name){
+        return normalizeNameKey(name) === vipKey;
+      });
+    });
   }
 
   switch (sortSel.value){
     case 'newest':
-      out.sort((a,b)=> (b.latestTs || 0) - (a.latestTs || 0) || (a.song||'').localeCompare(b.song||''));
+      out.sort((a,b)=> (b.latestTs || 0) - (a.latestTs || 0) || (a.song || '').localeCompare(b.song || ''));
       break;
     case 'song_az':
-      out.sort((a,b)=> (a.song||'').localeCompare(b.song||'') || (a.artist||'').localeCompare(b.artist||''));
+      out.sort((a,b)=> (a.song || '').localeCompare(b.song || '') || (a.artist || '').localeCompare(b.artist || ''));
       break;
     case 'artist_az':
-      out.sort((a,b)=> (a.artist||'').localeCompare(b.artist||'') || (a.song||'').localeCompare(b.song||''));
+      out.sort((a,b)=> (a.artist || '').localeCompare(b.artist || '') || (a.song || '').localeCompare(b.song || ''));
       break;
     case 'most_requested':
     default:
-      out.sort((a,b)=> b.people.length - a.people.length || (b.vipPeople.length - a.vipPeople.length) || (a.song||'').localeCompare(b.song||''));
+      out.sort((a,b)=> b.people.length - a.people.length || (b.vipPeople.length - a.vipPeople.length) || (a.song || '').localeCompare(b.song || ''));
       break;
   }
 
@@ -1041,77 +1207,90 @@ function applyRequestFiltersAndSorts(requests){
 }
 
 function renderAll(rows){
-  const {requests, played, removed, spam}=splitBuckets(rows);
+  const buckets = splitBuckets(rows);
+  const requests = buckets.requests;
+  const played = buckets.played;
+  const removed = buckets.removed;
+  const spam = buckets.spam;
 
   const sortedReq = applyRequestFiltersAndSorts(requests);
   renderList(reqList, sortedReq,
-    (obj)=>{ const el=buildCardBase(obj); attachRequestActions(el); return el; },
-    (node,obj)=> updateCardBase(node,obj)
+    function(obj){ const el = buildCardBase(obj); attachRequestActions(el); return el; },
+    function(node,obj){ updateCardBase(node,obj); }
   );
 
-  const playedSorted = [...played].sort((a,b)=>(a.song||'').localeCompare(b.song||''));
+  const playedSorted = played.slice().sort((a,b)=>(a.song || '').localeCompare(b.song || ''));
   renderList(playedList, playedSorted,
-    (obj)=>{ const el=buildCardBase(obj); attachPlayedActions(el); return el; },
-    (node,obj)=> updateCardBase(node,obj)
+    function(obj){ const el = buildCardBase(obj); attachPlayedActions(el); return el; },
+    function(node,obj){ updateCardBase(node,obj); }
   );
 
-  const removedSorted = [...removed].sort((a,b)=>(a.song||'').localeCompare(b.song||''));
+  const removedSorted = removed.slice().sort((a,b)=>(a.song || '').localeCompare(b.song || ''));
   renderList(removedList, removedSorted,
-    (obj)=>{ const el=buildCardBase(obj); attachRemovedActions(el); return el; },
-    (node,obj)=> updateCardBase(node,obj)
+    function(obj){ const el = buildCardBase(obj); attachRemovedActions(el); return el; },
+    function(node,obj){ updateCardBase(node,obj); }
   );
 
-  spamList.innerHTML='';
-  for(const s of spam){
-    const el=document.createElement('div');
-    el.className='card';
+  spamList.innerHTML = '';
+  spam.forEach(function(s){
+    const el = document.createElement('div');
+    el.className = 'card';
     el.dataset.key = s.key;
-    el.innerHTML=`
+    el.innerHTML = `
       <img class="thumb" alt="">
       <div class="meta">
-        <p class="title">${escapeHTML(s.song||'Unknown Title')}</p>
-        <p class="sub">${escapeHTML(s.artist||'Unknown Artist')}</p>
-        <p class="sub">Requester: ${escapeHTML(s.name||'Guest')}</p>
+        <p class="title">${escapeHTML(s.song || 'Unknown Title')}</p>
+        <p class="sub">${escapeHTML(s.artist || 'Unknown Artist')}</p>
+        <p class="sub">Requester: ${escapeHTML(s.name || 'Guest')}</p>
         <div class="spam-reason">Reason: ${escapeHTML(s.reason || 'spam_detected')}</div>
       </div>
       <div class="actions"></div>
     `;
-    getArtwork(s.song,s.artist).then(src=>{ if(src){ el.querySelector('.thumb').src=src; }});
+    getArtwork(s.song, s.artist).then(function(src){
+      if(src){ el.querySelector('.thumb').src = src; }
+    });
     spamList.appendChild(el);
-  }
+  });
 
-  reqCountEl.textContent    = `(${reqList.children.length})`;
-  playedCountEl.textContent = `(${playedList.children.length})`;
-  removedCountEl.textContent= `(${removedList.children.length})`;
-  spamCountTop.textContent  = `(${spamList.children.length})`;
+  reqCountEl.textContent = '(' + reqList.children.length + ')';
+  playedCountEl.textContent = '(' + playedList.children.length + ')';
+  removedCountEl.textContent = '(' + removedList.children.length + ')';
+  spamCountTop.textContent = '(' + spamList.children.length + ')';
 }
 
 function initCollapsibles(){
-  document.querySelectorAll('.collapsible-header').forEach(h=>{
-    h.addEventListener('click',()=>{
-      const p=h.parentElement; p.classList.toggle('open');
-      const t=h.querySelector('.twist'); if(t) t.textContent=p.classList.contains('open')?'▾':'▸';
+  document.querySelectorAll('.collapsible-header').forEach(function(h){
+    h.addEventListener('click', function(){
+      const p = h.parentElement;
+      p.classList.toggle('open');
+      const t = h.querySelector('.twist');
+      if(t) t.textContent = p.classList.contains('open') ? '▾' : '▸';
     });
   });
 }
 
 function setTab(which){
-  if(which==='spam'){
-    tabSpamBtn.classList.add('active'); tabRequestsBtn.classList.remove('active');
-    tabSpamPane.classList.remove('hidden'); tabRequestsPane.classList.add('hidden');
+  if(which === 'spam'){
+    tabSpamBtn.classList.add('active');
+    tabRequestsBtn.classList.remove('active');
+    tabSpamPane.classList.remove('hidden');
+    tabRequestsPane.classList.add('hidden');
   } else {
-    tabRequestsBtn.classList.add('active'); tabSpamBtn.classList.remove('active');
-    tabRequestsPane.classList.remove('hidden'); tabSpamPane.classList.add('hidden');
+    tabRequestsBtn.classList.add('active');
+    tabSpamBtn.classList.remove('active');
+    tabRequestsPane.classList.remove('hidden');
+    tabSpamPane.classList.add('hidden');
   }
 }
-tabRequestsBtn.addEventListener('click',()=>setTab('requests'));
-tabSpamBtn.addEventListener('click',()=>setTab('spam'));
 
-sortSel.addEventListener('change', ()=> renderAll(rowsCache));
-filterSel.addEventListener('change', ()=> renderAll(rowsCache));
-vipFilterSel.addEventListener('change', ()=> renderAll(rowsCache));
+tabRequestsBtn.addEventListener('click', function(){ setTab('requests'); });
+tabSpamBtn.addEventListener('click', function(){ setTab('spam'); });
 
-markVipBtn.addEventListener('click', async ()=>{
+sortSel.addEventListener('change', function(){ renderAll(rowsCache); });
+filterSel.addEventListener('change', function(){ renderAll(rowsCache); });
+vipFilterSel.addEventListener('change', function(){ renderAll(rowsCache); });
+
+markVipBtn.addEventListener('click', async function(){
   const name = requesterVipSel.value;
   if (!name){
     statusLine.textContent = 'Select a requester first.';
@@ -1120,7 +1299,7 @@ markVipBtn.addEventListener('click', async ()=>{
   await setVipNameStatus(name, true);
 });
 
-removeVipBtn.addEventListener('click', async ()=>{
+removeVipBtn.addEventListener('click', async function(){
   const name = requesterVipSel.value || vipFilterSel.value;
   if (!name){
     statusLine.textContent = 'Select a VIP name first.';
@@ -1129,14 +1308,14 @@ removeVipBtn.addEventListener('click', async ()=>{
   await setVipNameStatus(name, false);
 });
 
-eventSel.addEventListener('change', async ()=>{
-  currentCode=eventSel.value||'';
+eventSel.addEventListener('change', async function(){
+  currentCode = eventSel.value || '';
   initialRequestsLoaded = false;
   rowsCache = [];
   vipNames = [];
   updateVipUi();
   await loadVipNames();
-  await fetchRows({background:false});
+  await fetchRows({ background:false });
   startPolling();
 });
 
@@ -1146,10 +1325,10 @@ eventSel.addEventListener('change', async ()=>{
   setTab('requests');
 
   if(eventSel.value){
-    currentCode=eventSel.value;
+    currentCode = eventSel.value;
     initialRequestsLoaded = false;
     await loadVipNames();
-    await fetchRows({background:false});
+    await fetchRows({ background:false });
     startPolling();
   }
 })();
