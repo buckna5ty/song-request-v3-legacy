@@ -12,13 +12,11 @@
     --border:#2b2b2b;
     --ink:#f2f2f2;
     --muted:#bdbdbd;
-
     --accent:#1dcec9;
     --amber:#f7b731;
     --danger:#b22222;
     --put:#d81b60;
     --vip:#d4af37;
-
     --radius:12px;
     --maxw:1100px;
   }
@@ -106,6 +104,7 @@
 
   .inline-text.good{ color:#34d399; }
   .inline-text.bad{ color:#ef4444; }
+  .inline-text.warn{ color:#f7b731; }
 
   .meta-inline{
     color:#d8d8d8;
@@ -495,6 +494,9 @@
 <script>
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxh0I4H0szhTlV21aVA9DCMZXNCjIhZBqgiHSjzWnFlpDZQVW_l5FE1T9eUPEWyEmxufg/exec';
 const POLL_MS = 5000;
+const JSONP_TIMEOUT_MS = 30000;
+const ACTION_VERIFY_ATTEMPTS = 8;
+const ACTION_VERIFY_DELAY_MS = 1200;
 
 const $ = s => document.querySelector(s);
 
@@ -530,6 +532,7 @@ let latestFetchApplied = 0;
 let isActionInFlight = false;
 let artCache = new Map();
 let vipNamesCache = [];
+let hasEverLoadedRows = false;
 
 function safeString(v){
   return String(v || '').trim();
@@ -543,6 +546,10 @@ function escapeHTML(s){
     '"':'&quot;',
     "'":'&#39;'
   }[m]));
+}
+
+function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function keySong(song, artist){
@@ -591,29 +598,30 @@ function isRowVip(row){
 
 function showFullLoading(msg = 'Loading your requests...'){
   inlineText.textContent = msg;
-  inlineText.classList.remove('bad');
+  inlineText.classList.remove('bad', 'warn');
   inlineText.classList.add('good');
   inlineProgress.classList.add('show');
   inlineSpin.classList.remove('show');
 }
 
-function showSpinnerOnly(){
-  inlineText.textContent = '';
-  inlineText.classList.remove('good', 'bad');
+function showSpinnerOnly(msg = ''){
+  inlineText.textContent = msg;
+  inlineText.classList.remove('good', 'bad', 'warn');
+  if (msg) inlineText.classList.add('warn');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.add('show');
 }
 
 function clearInline(){
   inlineText.textContent = '';
-  inlineText.classList.remove('good', 'bad');
+  inlineText.classList.remove('good', 'bad', 'warn');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.remove('show');
 }
 
 function showEventsError(){
   inlineText.textContent = 'Could not load events.';
-  inlineText.classList.remove('good');
+  inlineText.classList.remove('good', 'warn');
   inlineText.classList.add('bad');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.remove('show');
@@ -633,14 +641,14 @@ function jsonp(url, params = {}){
   const qs = new URLSearchParams(params);
   const cb = 'cb_' + Math.random().toString(36).slice(2);
   qs.set('callback', cb);
-  qs.set('t', Date.now());
+  qs.set('t', Date.now() + '_' + Math.random().toString(36).slice(2));
 
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
     const timeout = setTimeout(() => {
       cleanup();
       reject(new Error('timeout'));
-    }, 10000);
+    }, JSONP_TIMEOUT_MS);
 
     function cleanup(){
       clearTimeout(timeout);
@@ -794,14 +802,14 @@ function startPolling(){
 }
 
 async function fetchRows({ background = false } = {}){
-  if (!currentCode) return;
-  if (isFetchingRows) return;
+  if (!currentCode) return false;
+  if (isFetchingRows) return false;
 
   isFetchingRows = true;
   const fetchId = ++latestFetchIssued;
 
   if (background){
-    showSpinnerOnly();
+    showSpinnerOnly('Refreshing...');
   }else{
     showFullLoading('Loading your requests...');
   }
@@ -810,7 +818,7 @@ async function fetchRows({ background = false } = {}){
     const r = await jsonp(ENDPOINT_URL, { mode: 'read', event: currentCode });
 
     if (fetchId < latestFetchApplied){
-      return;
+      return false;
     }
 
     latestFetchApplied = fetchId;
@@ -824,15 +832,33 @@ async function fetchRows({ background = false } = {}){
 
     rowsCache = rawRows.map(x => ({ ...x }));
     vipNamesCache = vipNames.slice();
+    hasEverLoadedRows = true;
 
     renderAll(rowsCache);
     setVipMeta(vipNamesCache);
     setStatusMessage('');
+    clearInline();
+    return true;
   }catch{
-    setStatusMessage('Connection error.', true);
+    if (hasEverLoadedRows){
+      inlineText.textContent = 'Reconnecting...';
+      inlineText.classList.remove('good', 'bad');
+      inlineText.classList.add('warn');
+      inlineProgress.classList.remove('show');
+      inlineSpin.classList.add('show');
+      setStatusMessage('Connection issue. Keeping last loaded requests on screen.', true);
+    }else{
+      inlineText.textContent = 'Still trying to load requests...';
+      inlineText.classList.remove('good');
+      inlineText.classList.remove('warn');
+      inlineText.classList.add('bad');
+      inlineProgress.classList.remove('show');
+      inlineSpin.classList.add('show');
+      setStatusMessage('Connection error.', true);
+    }
+    return false;
   }finally{
     isFetchingRows = false;
-    clearInline();
   }
 }
 
@@ -1026,47 +1052,50 @@ function buildCardBase(obj){
     }
   });
 
+  bindCardCommon(el);
+  return el;
+}
+
+function bindCardCommon(el){
   const box = el.querySelector('.names-box');
   const reqline = el.querySelector('.reqline');
   const car = reqline.querySelector('.car');
 
-  reqline.addEventListener('click', () => {
+  reqline.onclick = () => {
     const open = box.classList.toggle('open');
     car.textContent = open ? '▾' : '▸';
-  });
+  };
 
   const titleEl = el.querySelector('.title');
   const artistEl = el.querySelector('.sub');
   const thumbEl = el.querySelector('.thumb');
 
-  titleEl.addEventListener('click', () => {
+  titleEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'track'
     }));
-  });
+  };
 
-  artistEl.addEventListener('click', () => {
+  artistEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'artist'
     }));
-  });
+  };
 
-  thumbEl.addEventListener('click', () => {
+  thumbEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'album'
     }));
-  });
-
-  return el;
+  };
 }
 
 function updateCardBase(node, obj){
@@ -1090,26 +1119,38 @@ function updateCardBase(node, obj){
     existingChip.remove();
   }
 
+  const currentlyOpen = node.querySelector('.names-box')?.classList.contains('open');
   node.querySelector('.names-box').outerHTML = namesBoxHTML(obj.people);
+  bindCardCommon(node);
 
-  const reqline = node.querySelector('.reqline');
-  const namesBox = node.querySelector('.names-box');
-  const car = reqline.querySelector('.car');
-  reqline.onclick = () => {
-    const open = namesBox.classList.toggle('open');
-    car.textContent = open ? '▾' : '▸';
-  };
+  if (currentlyOpen){
+    const box = node.querySelector('.names-box');
+    const car = node.querySelector('.reqline .car');
+    box.classList.add('open');
+    car.textContent = '▾';
+  }
 }
 
 function renderList(container, items, makeNode, updateNode){
   const existing = new Map();
-  Array.from(container.children).forEach(ch => existing.set(ch.dataset.key, ch));
+  Array.from(container.children).forEach(ch => {
+    if (ch.dataset?.key) existing.set(ch.dataset.key, ch);
+  });
 
   existing.forEach((node, key) => {
     if (!items.some(it => it.key === key)){
       node.remove();
     }
   });
+
+  if (!items.length){
+    container.innerHTML = `<div class="empty-state">No songs in this section.</div>`;
+    return;
+  }
+
+  if (container.children.length === 1 && container.querySelector('.empty-state')){
+    container.innerHTML = '';
+  }
 
   let cursor = container.firstChild;
 
@@ -1125,13 +1166,6 @@ function renderList(container, items, makeNode, updateNode){
       }
     }
     cursor = node.nextSibling;
-  }
-
-  if (!items.length){
-    container.innerHTML = `<div class="empty-state">No songs in this section.</div>`;
-  }else{
-    const empties = container.querySelectorAll('.empty-state');
-    empties.forEach(x => x.remove());
   }
 }
 
@@ -1162,79 +1196,6 @@ function buildSpamCard(obj){
   });
 
   return el;
-}
-
-async function setStatusForIds(ids, status){
-  if (!Array.isArray(ids) || !ids.length) return;
-  if (isActionInFlight) return;
-
-  isActionInFlight = true;
-  showSpinnerOnly();
-
-  try{
-    await Promise.all(ids.map(id => jsonp(ENDPOINT_URL, {
-      mode: 'setPlayed',
-      id,
-      status
-    })));
-
-    await fetchRows({ background: false });
-  }catch{
-    setStatusMessage('Could not update request status.', true);
-  }finally{
-    isActionInFlight = false;
-    clearInline();
-  }
-}
-
-function attachRequestActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn played" type="button">Mark as Played</button>
-    <button class="btn remove" type="button">Remove</button>
-  `;
-
-  actions.querySelector('.btn.played').addEventListener('click', async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
-
-  actions.querySelector('.btn.remove').addEventListener('click', async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'removed');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
-}
-
-function attachPlayedActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn unplayed" type="button">Mark as Unplayed</button>
-  `;
-
-  actions.querySelector('.btn.unplayed').addEventListener('click', async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
-}
-
-function attachRemovedActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn putback" type="button">Put Back</button>
-  `;
-
-  actions.querySelector('.btn.putback').addEventListener('click', async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
 }
 
 function renderSpamList(items){
@@ -1310,6 +1271,120 @@ function renderAll(rows){
   spamCountTop.textContent = `(${spam.length})`;
 }
 
+async function setPlayedOne(id, status){
+  const r = await jsonp(ENDPOINT_URL, {
+    mode: 'setPlayed',
+    id,
+    status
+  });
+
+  if (!r || r.ok === false){
+    throw new Error(r?.error || 'setPlayed failed');
+  }
+
+  return r;
+}
+
+function rowIdsNowInBucket(ids, targetStatus){
+  const target = safeString(targetStatus).toLowerCase();
+  const idSet = new Set(ids.map(String));
+
+  const matches = rowsCache.filter(row => idSet.has(String(row.id)));
+  if (!matches.length) return false;
+
+  return matches.every(row => normalizePlayedStatus(row) === target);
+}
+
+async function verifyActionApplied(ids, expectedStatus){
+  for (let i = 0; i < ACTION_VERIFY_ATTEMPTS; i++){
+    const ok = await fetchRows({ background: true });
+    if (ok && rowIdsNowInBucket(ids, expectedStatus)){
+      return true;
+    }
+    await sleep(ACTION_VERIFY_DELAY_MS);
+  }
+  return false;
+}
+
+async function setStatusForIds(ids, status){
+  if (!Array.isArray(ids) || !ids.length) return;
+  if (isActionInFlight) return;
+
+  isActionInFlight = true;
+  showSpinnerOnly('Updating...');
+  setStatusMessage('');
+
+  try{
+    for (const id of ids){
+      await setPlayedOne(id, status);
+      await sleep(150);
+    }
+
+    const verified = await verifyActionApplied(ids, status);
+
+    if (!verified){
+      setStatusMessage('Update sent, but the backend has not reflected the change yet. It may appear shortly.', true);
+    }else{
+      setStatusMessage('');
+    }
+  }catch(err){
+    setStatusMessage('Could not update request status.', true);
+  }finally{
+    isActionInFlight = false;
+    clearInline();
+  }
+}
+
+function attachRequestActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn played" type="button">Mark as Played</button>
+    <button class="btn remove" type="button">Remove</button>
+  `;
+
+  actions.querySelector('.btn.played').onclick = async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  };
+
+  actions.querySelector('.btn.remove').onclick = async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'removed');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  };
+}
+
+function attachPlayedActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn unplayed" type="button">Mark as Unplayed</button>
+  `;
+
+  actions.querySelector('.btn.unplayed').onclick = async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  };
+}
+
+function attachRemovedActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn putback" type="button">Put Back</button>
+  `;
+
+  actions.querySelector('.btn.putback').onclick = async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  };
+}
+
 function initCollapsibles(){
   document.querySelectorAll('.collapsible-header').forEach(h => {
     h.addEventListener('click', () => {
@@ -1348,6 +1423,7 @@ eventSel.addEventListener('change', async () => {
   setVipMeta([]);
   latestFetchIssued = 0;
   latestFetchApplied = 0;
+  hasEverLoadedRows = false;
   await fetchRows({ background: false });
   startPolling();
 });
