@@ -106,11 +106,6 @@
   .inline-text.bad{ color:#ef4444; }
   .inline-text.warn{ color:#f7b731; }
 
-  .meta-inline{
-    color:#d8d8d8;
-    font-size:13px;
-  }
-
   .progress{
     position:relative;
     height:6px;
@@ -309,19 +304,6 @@
     font-weight:700;
   }
 
-  .vip-chip{
-    display:inline-block;
-    margin-top:6px;
-    padding:4px 8px;
-    border-radius:999px;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.04em;
-    background:rgba(212,175,55,.12);
-    border:1px solid rgba(212,175,55,.45);
-    color:#f7d774;
-  }
-
   .names-box{
     margin-top:6px;
     background:var(--subsection);
@@ -348,12 +330,6 @@
     margin:3px 0;
     color:#fafafa;
     font-size:13px;
-  }
-
-  .vip-star{
-    color:var(--vip);
-    font-weight:900;
-    margin-left:6px;
   }
 
   .actions{
@@ -438,7 +414,6 @@
         <span id="inlineText" class="inline-text"></span>
         <div id="inlineProgress" class="progress"></div>
         <span id="inlineSpin" class="spin" aria-hidden="true"></span>
-        <span id="vipMeta" class="meta-inline"></span>
       </div>
     </div>
 
@@ -492,19 +467,15 @@
   </div>
 
 <script>
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxh0I4H0szhTlV21aVA9DCMZXNCjIhZBqgiHSjzWnFlpDZQVW_l5FE1T9eUPEWyEmxufg/exec';
+const SUPABASE_URL = 'https://anaofamvuusuemccfnkp.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oNLSe8ozVcT3hp65fJNcDg_0058Np2C';
 const POLL_MS = 5000;
-const JSONP_TIMEOUT_MS = 30000;
-const ACTION_VERIFY_ATTEMPTS = 8;
-const ACTION_VERIFY_DELAY_MS = 1200;
 
 const $ = s => document.querySelector(s);
-
 const eventSel = $('#eventSel');
 const inlineText = $('#inlineText');
 const inlineProgress = $('#inlineProgress');
 const inlineSpin = $('#inlineSpin');
-const vipMeta = $('#vipMeta');
 
 const tabRequestsBtn = $('#tabRequests');
 const tabSpamBtn = $('#tabSpam');
@@ -525,14 +496,9 @@ const statusLine = $('#statusLine');
 let currentCode = '';
 let rowsCache = [];
 let pollTimer = null;
-let isLoadingEvents = false;
 let isFetchingRows = false;
-let latestFetchIssued = 0;
-let latestFetchApplied = 0;
-let isActionInFlight = false;
+let isLoadingEvents = false;
 let artCache = new Map();
-let vipNamesCache = [];
-let hasEverLoadedRows = false;
 
 function safeString(v){
   return String(v || '').trim();
@@ -548,36 +514,27 @@ function escapeHTML(s){
   }[m]));
 }
 
-function sleep(ms){
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function keySong(song, artist){
-  return `${safeString(song).toLowerCase()}|${safeString(artist).toLowerCase()}`;
-}
-
 function parseEventDate(dateStr){
   const s = safeString(dateStr);
   if (!s) return new Date(NaN);
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
-    const [y, m, d] = s.split('-').map(Number);
+    const [y,m,d] = s.split('-').map(Number);
     return new Date(y, m - 1, d);
   }
   return new Date(s);
 }
 
-function pad2(n){
-  return String(n).padStart(2, '0');
-}
-
-function dow3(n){
-  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n] || '';
-}
+function pad2(n){ return String(n).padStart(2, '0'); }
+function dow3(n){ return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n] || ''; }
 
 function formatHeaderDate(s){
   const d = parseEventDate(s);
   if (isNaN(d)) return '';
-  return `${dow3(d.getDay())} ${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;
+  return `${dow3(d.getDay())} ${pad2(d.getMonth()+1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;
+}
+
+function keySong(song, artist){
+  return `${safeString(song).toLowerCase()}|${safeString(artist).toLowerCase()}`;
 }
 
 function normalizePlayedStatus(row){
@@ -592,11 +549,7 @@ function normalizeSpamStatus(row){
   return s || 'clean';
 }
 
-function isRowVip(row){
-  return !!row?.is_vip;
-}
-
-function showFullLoading(msg = 'Loading your requests...'){
+function showFullLoading(msg='Loading your requests...'){
   inlineText.textContent = msg;
   inlineText.classList.remove('bad', 'warn');
   inlineText.classList.add('good');
@@ -604,7 +557,7 @@ function showFullLoading(msg = 'Loading your requests...'){
   inlineSpin.classList.remove('show');
 }
 
-function showSpinnerOnly(msg = ''){
+function showSpinnerOnly(msg=''){
   inlineText.textContent = msg;
   inlineText.classList.remove('good', 'bad', 'warn');
   if (msg) inlineText.classList.add('warn');
@@ -632,43 +585,27 @@ function setStatusMessage(msg, isError = false){
   statusLine.style.color = isError ? '#ef4444' : '#ffffff';
 }
 
-function setVipMeta(vipNames){
-  const count = Array.isArray(vipNames) ? vipNames.length : 0;
-  vipMeta.textContent = currentCode ? `VIPs for this event: ${count}` : '';
-}
-
-function jsonp(url, params = {}){
-  const qs = new URLSearchParams(params);
-  const cb = 'cb_' + Math.random().toString(36).slice(2);
-  qs.set('callback', cb);
-  qs.set('t', Date.now() + '_' + Math.random().toString(36).slice(2));
-
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('timeout'));
-    }, JSONP_TIMEOUT_MS);
-
-    function cleanup(){
-      clearTimeout(timeout);
-      try{ delete window[cb]; }catch{}
-      s.remove();
-    }
-
-    window[cb] = (payload) => {
-      cleanup();
-      resolve(payload);
-    };
-
-    s.onerror = () => {
-      cleanup();
-      reject(new Error('jsonp'));
-    };
-
-    s.src = url + (url.includes('?') ? '&' : '?') + qs.toString();
-    document.body.appendChild(s);
+async function rpc(functionName, body){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+    },
+    body: JSON.stringify(body || {})
   });
+
+  const text = await res.text();
+  if (!res.ok){
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  try{
+    return JSON.parse(text);
+  }catch{
+    return [];
+  }
 }
 
 function spotifyIdFromUrl(url){
@@ -687,13 +624,8 @@ function spotifyIdFromUrl(url){
 function spotifyUriFromLinkOrSearch({ link, song, artist, kind }){
   const parsed = spotifyIdFromUrl(link);
 
-  if (parsed && parsed.type === kind){
-    return `spotify:${kind}:${parsed.id}`;
-  }
-
-  if (kind === 'track' && parsed && parsed.type === 'track'){
-    return `spotify:track:${parsed.id}`;
-  }
+  if (parsed && parsed.type === kind) return `spotify:${kind}:${parsed.id}`;
+  if (kind === 'track' && parsed && parsed.type === 'track') return `spotify:track:${parsed.id}`;
 
   const sSong = safeString(song);
   const sArtist = safeString(artist);
@@ -726,15 +658,12 @@ async function getArtwork(song, artist){
   if (artCache.has(k)) return artCache.get(k);
 
   try{
-    const data = await jsonp('https://itunes.apple.com/search', {
-      term: `${safeString(song)} ${safeString(artist)}`.trim(),
-      entity: 'musicTrack',
-      limit: 1
-    });
-
-    const url = data?.results?.[0]?.artworkUrl100 || data?.results?.[0]?.artworkUrl60 || '';
-    artCache.set(k, url || '');
-    return url || '';
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(`${safeString(song)} ${safeString(artist)}`.trim())}&entity=musicTrack&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const art = data?.results?.[0]?.artworkUrl100 || data?.results?.[0]?.artworkUrl60 || '';
+    artCache.set(k, art || '');
+    return art || '';
   }catch{
     artCache.set(k, '');
     return '';
@@ -747,20 +676,15 @@ async function loadActiveEvents(){
   showFullLoading('Loading your events...');
 
   try{
-    const r = await jsonp(ENDPOINT_URL, { mode: 'listActive' });
-    const list = Array.isArray(r?.events) ? r.events.slice() : [];
-    list.sort((a, b) => parseEventDate(a.date || 0) - parseEventDate(b.date || 0));
-
+    const list = await rpc('api_list_active_events', {});
     eventSel.innerHTML = '';
 
-    if (!list.length){
+    if (!Array.isArray(list) || !list.length){
       const opt = document.createElement('option');
       opt.value = '';
       opt.textContent = 'No active events';
       eventSel.appendChild(opt);
       currentCode = '';
-      vipNamesCache = [];
-      setVipMeta([]);
       showEventsError();
       return;
     }
@@ -802,86 +726,24 @@ function startPolling(){
 }
 
 async function fetchRows({ background = false } = {}){
-  if (!currentCode) return false;
-  if (isFetchingRows) return false;
+  if (!currentCode) return;
+  if (isFetchingRows) return;
 
   isFetchingRows = true;
-  const fetchId = ++latestFetchIssued;
-
-  if (background){
-    showSpinnerOnly('Refreshing...');
-  }else{
-    showFullLoading('Loading your requests...');
-  }
+  if (!background) showFullLoading('Loading your requests...');
+  else showSpinnerOnly('Refreshing...');
 
   try{
-    const r = await jsonp(ENDPOINT_URL, { mode: 'read', event: currentCode });
-
-    if (fetchId < latestFetchApplied){
-      return false;
-    }
-
-    latestFetchApplied = fetchId;
-
-    if (!r || r.ok === false){
-      throw new Error(r?.error || 'read failed');
-    }
-
-    const rawRows = Array.isArray(r.rows) ? r.rows : [];
-    const vipNames = Array.isArray(r.vip_names) ? r.vip_names : [];
-
-    rowsCache = rawRows.map(x => ({ ...x }));
-    vipNamesCache = vipNames.slice();
-    hasEverLoadedRows = true;
-
+    const raw = await rpc('api_read_event_requests', { p_event_code: currentCode });
+    rowsCache = Array.isArray(raw) ? raw.map(x => ({ ...x })) : [];
     renderAll(rowsCache);
-    setVipMeta(vipNamesCache);
     setStatusMessage('');
-    clearInline();
-    return true;
   }catch{
-    if (hasEverLoadedRows){
-      inlineText.textContent = 'Reconnecting...';
-      inlineText.classList.remove('good', 'bad');
-      inlineText.classList.add('warn');
-      inlineProgress.classList.remove('show');
-      inlineSpin.classList.add('show');
-      setStatusMessage('Connection issue. Keeping last loaded requests on screen.', true);
-    }else{
-      inlineText.textContent = 'Still trying to load requests...';
-      inlineText.classList.remove('good');
-      inlineText.classList.remove('warn');
-      inlineText.classList.add('bad');
-      inlineProgress.classList.remove('show');
-      inlineSpin.classList.add('show');
-      setStatusMessage('Connection error.', true);
-    }
-    return false;
+    setStatusMessage('Connection error.', true);
   }finally{
     isFetchingRows = false;
+    clearInline();
   }
-}
-
-function makeGroupedPersonMap(){
-  return new Map();
-}
-
-function addPersonToMap(map, row){
-  const name = safeString(row.name) || 'Guest';
-  const key = name.toLowerCase();
-  const existing = map.get(key);
-
-  if (existing){
-    existing.count += 1;
-    if (isRowVip(row)) existing.isVip = true;
-    return;
-  }
-
-  map.set(key, {
-    name,
-    count: 1,
-    isVip: isRowVip(row)
-  });
 }
 
 function splitBuckets(rows){
@@ -910,9 +772,7 @@ function splitBuckets(rows){
           artist,
           name: safeString(row.name) || 'Guest',
           count: 0,
-          spam_status: spamStatus,
-          link,
-          is_vip: isRowVip(row)
+          spam_status: spamStatus
         };
         spamMap.set(spamKey, sg);
       }
@@ -923,105 +783,60 @@ function splitBuckets(rows){
     if (playedStatus === 'played'){
       let g = playedMap.get(k);
       if (!g){
-        g = {
-          key: k,
-          song,
-          artist,
-          ids: [],
-          link: '',
-          peopleMap: makeGroupedPersonMap(),
-          hasVip: false
-        };
+        g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
         playedMap.set(k, g);
       }
       g.ids.push(row.id);
-      addPersonToMap(g.peopleMap, row);
+      if (row.name) g.names.add(row.name);
       if (!g.link && link) g.link = link;
-      if (isRowVip(row)) g.hasVip = true;
       continue;
     }
 
     if (playedStatus === 'removed'){
       let g = removedMap.get(k);
       if (!g){
-        g = {
-          key: k,
-          song,
-          artist,
-          ids: [],
-          link: '',
-          peopleMap: makeGroupedPersonMap(),
-          hasVip: false
-        };
+        g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
         removedMap.set(k, g);
       }
       g.ids.push(row.id);
-      addPersonToMap(g.peopleMap, row);
+      if (row.name) g.names.add(row.name);
       if (!g.link && link) g.link = link;
-      if (isRowVip(row)) g.hasVip = true;
       continue;
     }
 
     let g = requestMap.get(k);
     if (!g){
-      g = {
-        key: k,
-        song,
-        artist,
-        ids: [],
-        link: '',
-        peopleMap: makeGroupedPersonMap(),
-        hasVip: false
-      };
+      g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
       requestMap.set(k, g);
     }
     g.ids.push(row.id);
-    addPersonToMap(g.peopleMap, row);
+    if (row.name) g.names.add(row.name);
     if (!g.link && link) g.link = link;
-    if (isRowVip(row)) g.hasVip = true;
   }
 
-  function finalizeGroup(g){
-    const people = [...g.peopleMap.values()].sort((a, b) => {
-      if (a.isVip !== b.isVip) return a.isVip ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+  const requests = [...requestMap.values()].map(g => ({
+    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
+  }));
 
-    return {
-      key: g.key,
-      song: g.song,
-      artist: g.artist,
-      ids: g.ids.slice(),
-      link: g.link,
-      people,
-      guestCount: people.length,
-      hasVip: g.hasVip
-    };
-  }
+  const played = [...playedMap.values()].map(g => ({
+    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
+  }));
 
-  return {
-    requests: [...requestMap.values()].map(finalizeGroup),
-    played: [...playedMap.values()].map(finalizeGroup),
-    removed: [...removedMap.values()].map(finalizeGroup),
-    spam: [...spamMap.values()].sort((a, b) => b.count - a.count || a.song.localeCompare(b.song))
-  };
+  const removed = [...removedMap.values()].map(g => ({
+    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
+  }));
+
+  const spam = [...spamMap.values()].sort((a,b) => b.count - a.count || a.song.localeCompare(b.song));
+
+  return { requests, played, removed, spam };
 }
 
-function namesBoxHTML(people){
-  const items = people.map(p => {
-    const star = p.isVip ? `<span class="vip-star">★</span>` : '';
-    return `<li>${escapeHTML(p.name)}${star}</li>`;
-  }).join('');
-
-  return `
-    <div class="names-box">
-      <p class="hdr">Requesters</p>
-      <ul>${items}</ul>
-    </div>
-  `;
+function namesBoxHTML(names){
+  return `<div class="names-box"><p class="hdr">Requesters</p><ul>${names.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul></div>`;
 }
 
 function buildCardBase(obj){
+  const guests = obj.people.length;
   const el = document.createElement('div');
   el.className = 'card';
   el.dataset.key = obj.key;
@@ -1030,15 +845,12 @@ function buildCardBase(obj){
   el.dataset.artist = obj.artist || '';
   el.dataset.link = obj.link || '';
 
-  const vipChip = obj.hasVip ? `<div class="vip-chip">VIP REQUEST</div>` : '';
-
   el.innerHTML = `
     <img class="thumb" alt="">
     <div class="meta">
       <p class="title" title="Open in Spotify">${escapeHTML(obj.song || 'Unknown Title')}</p>
       <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
-      <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${obj.guestCount} guest${obj.guestCount === 1 ? '' : 's'}</span></div>
-      ${vipChip}
+      <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${guests} guest${guests === 1 ? '' : 's'}</span></div>
       ${namesBoxHTML(obj.people)}
     </div>
     <div class="actions"></div>
@@ -1052,50 +864,47 @@ function buildCardBase(obj){
     }
   });
 
-  bindCardCommon(el);
-  return el;
-}
-
-function bindCardCommon(el){
   const box = el.querySelector('.names-box');
   const reqline = el.querySelector('.reqline');
   const car = reqline.querySelector('.car');
 
-  reqline.onclick = () => {
+  reqline.addEventListener('click', () => {
     const open = box.classList.toggle('open');
     car.textContent = open ? '▾' : '▸';
-  };
+  });
 
   const titleEl = el.querySelector('.title');
   const artistEl = el.querySelector('.sub');
   const thumbEl = el.querySelector('.thumb');
 
-  titleEl.onclick = () => {
+  titleEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'track'
     }));
-  };
+  });
 
-  artistEl.onclick = () => {
+  artistEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'artist'
     }));
-  };
+  });
 
-  thumbEl.onclick = () => {
+  thumbEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'album'
     }));
-  };
+  });
+
+  return el;
 }
 
 function updateCardBase(node, obj){
@@ -1106,29 +915,79 @@ function updateCardBase(node, obj){
 
   node.querySelector('.title').textContent = obj.song || 'Unknown Title';
   node.querySelector('.sub').textContent = obj.artist || 'Unknown Artist';
-  node.querySelector('.txt').textContent = `Requested by ${obj.guestCount} guest${obj.guestCount === 1 ? '' : 's'}`;
+  node.querySelector('.txt').textContent = `Requested by ${obj.people.length} guest${obj.people.length === 1 ? '' : 's'}`;
+  node.querySelector('.names-box').innerHTML = `<p class="hdr">Requesters</p><ul>${obj.people.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul>`;
+}
 
-  const existingChip = node.querySelector('.vip-chip');
-  if (obj.hasVip && !existingChip){
-    const chip = document.createElement('div');
-    chip.className = 'vip-chip';
-    chip.textContent = 'VIP REQUEST';
-    node.querySelector('.reqline').insertAdjacentElement('afterend', chip);
-  }
-  if (!obj.hasVip && existingChip){
-    existingChip.remove();
-  }
+async function setStatusForIds(ids, status){
+  if (!Array.isArray(ids) || !ids.length) return;
 
-  const currentlyOpen = node.querySelector('.names-box')?.classList.contains('open');
-  node.querySelector('.names-box').outerHTML = namesBoxHTML(obj.people);
-  bindCardCommon(node);
+  showSpinnerOnly('Updating...');
+  setStatusMessage('');
 
-  if (currentlyOpen){
-    const box = node.querySelector('.names-box');
-    const car = node.querySelector('.reqline .car');
-    box.classList.add('open');
-    car.textContent = '▾';
+  try{
+    for (const id of ids){
+      await rpc('api_set_played_status', {
+        p_request_id: id,
+        p_status: status
+      });
+    }
+    await fetchRows({ background: false });
+  }catch{
+    setStatusMessage('Could not update request status.', true);
+  }finally{
+    clearInline();
   }
+}
+
+function attachRequestActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn played" type="button">Mark as Played</button>
+    <button class="btn remove" type="button">Remove</button>
+  `;
+
+  actions.querySelector('.btn.played').addEventListener('click', async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  });
+
+  actions.querySelector('.btn.remove').addEventListener('click', async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'removed');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  });
+}
+
+function attachPlayedActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn unplayed" type="button">Mark as Unplayed</button>
+  `;
+
+  actions.querySelector('.btn.unplayed').addEventListener('click', async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  });
+}
+
+function attachRemovedActions(card){
+  const actions = card.querySelector('.actions');
+  actions.innerHTML = `
+    <button class="btn putback" type="button">Put Back</button>
+  `;
+
+  actions.querySelector('.btn.putback').addEventListener('click', async () => {
+    const ids = JSON.parse(card.dataset.ids || '[]');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  });
 }
 
 function renderList(container, items, makeNode, updateNode){
@@ -1169,220 +1028,63 @@ function renderList(container, items, makeNode, updateNode){
   }
 }
 
-function buildSpamCard(obj){
-  const el = document.createElement('div');
-  el.className = 'card';
-
-  const vipText = obj.is_vip ? `<span class="vip-star">★</span>` : '';
-  const statusText = obj.spam_status === 'spam' ? 'Spam' : 'Possible Spam';
-
-  el.innerHTML = `
-    <img class="thumb" alt="">
-    <div class="meta">
-      <p class="title">${escapeHTML(obj.song || 'Unknown Title')}</p>
-      <p class="sub">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
-      <p class="sub">Requested by ${escapeHTML(obj.name || 'Guest')}${vipText} (x${obj.count})</p>
-      <div class="vip-chip" style="margin-top:8px;">${escapeHTML(statusText)}</div>
-    </div>
-    <div class="actions"></div>
-  `;
-
-  getArtwork(obj.song, obj.artist).then(src => {
-    const img = el.querySelector('.thumb');
-    if (img && src){
-      img.src = src;
-      img.alt = `${obj.song} cover`;
-    }
-  });
-
-  return el;
-}
-
-function renderSpamList(items){
-  spamList.innerHTML = '';
-  if (!items.length){
-    spamList.innerHTML = `<div class="empty-state">No spammed requests.</div>`;
-    return;
-  }
-
-  for (const item of items){
-    spamList.appendChild(buildSpamCard(item));
-  }
-}
-
 function renderAll(rows){
   const { requests, played, removed, spam } = splitBuckets(rows);
 
-  const sortedReq = [...requests].sort((a, b) =>
-    b.guestCount - a.guestCount ||
-    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+  const sortedReq = [...requests].sort((a,b) =>
+    b.people.length - a.people.length || (a.song || '').localeCompare(b.song || '')
+  );
+
+  const sortedPlayed = [...played].sort((a,b) =>
     (a.song || '').localeCompare(b.song || '')
   );
 
-  const sortedPlayed = [...played].sort((a, b) =>
-    (a.song || '').localeCompare(b.song || '')
-  );
-
-  const sortedRemoved = [...removed].sort((a, b) =>
+  const sortedRemoved = [...removed].sort((a,b) =>
     (a.song || '').localeCompare(b.song || '')
   );
 
   renderList(reqList, sortedReq,
-    (obj) => {
-      const el = buildCardBase(obj);
-      attachRequestActions(el);
-      return el;
-    },
-    (node, obj) => {
-      updateCardBase(node, obj);
-      attachRequestActions(node);
-    }
+    (obj) => { const el = buildCardBase(obj); attachRequestActions(el); return el; },
+    (node, obj) => { updateCardBase(node, obj); attachRequestActions(node); }
   );
 
   renderList(playedList, sortedPlayed,
-    (obj) => {
-      const el = buildCardBase(obj);
-      attachPlayedActions(el);
-      return el;
-    },
-    (node, obj) => {
-      updateCardBase(node, obj);
-      attachPlayedActions(node);
-    }
+    (obj) => { const el = buildCardBase(obj); attachPlayedActions(el); return el; },
+    (node, obj) => { updateCardBase(node, obj); attachPlayedActions(node); }
   );
 
   renderList(removedList, sortedRemoved,
-    (obj) => {
-      const el = buildCardBase(obj);
-      attachRemovedActions(el);
-      return el;
-    },
-    (node, obj) => {
-      updateCardBase(node, obj);
-      attachRemovedActions(node);
-    }
+    (obj) => { const el = buildCardBase(obj); attachRemovedActions(el); return el; },
+    (node, obj) => { updateCardBase(node, obj); attachRemovedActions(node); }
   );
 
-  renderSpamList(spam);
+  spamList.innerHTML = '';
+  if (!spam.length){
+    spamList.innerHTML = `<div class="empty-state">No spammed requests.</div>`;
+  }else{
+    for (const s of spam){
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `
+        <img class="thumb" alt="">
+        <div class="meta">
+          <p class="title">${escapeHTML(s.song || 'Unknown Title')}</p>
+          <p class="sub">${escapeHTML(s.artist || 'Unknown Artist')}</p>
+          <p class="sub">Requested by ${escapeHTML(s.name || 'Guest')} (x${s.count})</p>
+        </div>
+        <div class="actions"></div>
+      `;
+      getArtwork(s.song, s.artist).then(src => {
+        if (src) el.querySelector('.thumb').src = src;
+      });
+      spamList.appendChild(el);
+    }
+  }
 
   reqCountEl.textContent = `(${sortedReq.length})`;
   playedCountEl.textContent = `(${sortedPlayed.length})`;
   removedCountEl.textContent = `(${sortedRemoved.length})`;
   spamCountTop.textContent = `(${spam.length})`;
-}
-
-async function setPlayedOne(id, status){
-  const r = await jsonp(ENDPOINT_URL, {
-    mode: 'setPlayed',
-    id,
-    status
-  });
-
-  if (!r || r.ok === false){
-    throw new Error(r?.error || 'setPlayed failed');
-  }
-
-  return r;
-}
-
-function rowIdsNowInBucket(ids, targetStatus){
-  const target = safeString(targetStatus).toLowerCase();
-  const idSet = new Set(ids.map(String));
-
-  const matches = rowsCache.filter(row => idSet.has(String(row.id)));
-  if (!matches.length) return false;
-
-  return matches.every(row => normalizePlayedStatus(row) === target);
-}
-
-async function verifyActionApplied(ids, expectedStatus){
-  for (let i = 0; i < ACTION_VERIFY_ATTEMPTS; i++){
-    const ok = await fetchRows({ background: true });
-    if (ok && rowIdsNowInBucket(ids, expectedStatus)){
-      return true;
-    }
-    await sleep(ACTION_VERIFY_DELAY_MS);
-  }
-  return false;
-}
-
-async function setStatusForIds(ids, status){
-  if (!Array.isArray(ids) || !ids.length) return;
-  if (isActionInFlight) return;
-
-  isActionInFlight = true;
-  showSpinnerOnly('Updating...');
-  setStatusMessage('');
-
-  try{
-    for (const id of ids){
-      await setPlayedOne(id, status);
-      await sleep(150);
-    }
-
-    const verified = await verifyActionApplied(ids, status);
-
-    if (!verified){
-      setStatusMessage('Update sent, but the backend has not reflected the change yet. It may appear shortly.', true);
-    }else{
-      setStatusMessage('');
-    }
-  }catch(err){
-    setStatusMessage('Could not update request status.', true);
-  }finally{
-    isActionInFlight = false;
-    clearInline();
-  }
-}
-
-function attachRequestActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn played" type="button">Mark as Played</button>
-    <button class="btn remove" type="button">Remove</button>
-  `;
-
-  actions.querySelector('.btn.played').onclick = async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  };
-
-  actions.querySelector('.btn.remove').onclick = async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'removed');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  };
-}
-
-function attachPlayedActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn unplayed" type="button">Mark as Unplayed</button>
-  `;
-
-  actions.querySelector('.btn.unplayed').onclick = async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  };
-}
-
-function attachRemovedActions(card){
-  const actions = card.querySelector('.actions');
-  actions.innerHTML = `
-    <button class="btn putback" type="button">Put Back</button>
-  `;
-
-  actions.querySelector('.btn.putback').onclick = async () => {
-    const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  };
 }
 
 function initCollapsibles(){
@@ -1391,9 +1093,7 @@ function initCollapsibles(){
       const p = h.parentElement;
       p.classList.toggle('open');
       const t = h.querySelector('.twist');
-      if (t){
-        t.textContent = p.classList.contains('open') ? '▾' : '▸';
-      }
+      if (t) t.textContent = p.classList.contains('open') ? '▾' : '▸';
     });
   });
 }
@@ -1404,13 +1104,12 @@ function setTab(which){
     tabRequestsBtn.classList.remove('active');
     tabSpamPane.classList.remove('hidden');
     tabRequestsPane.classList.add('hidden');
-    return;
+  } else {
+    tabRequestsBtn.classList.add('active');
+    tabSpamBtn.classList.remove('active');
+    tabRequestsPane.classList.remove('hidden');
+    tabSpamPane.classList.add('hidden');
   }
-
-  tabRequestsBtn.classList.add('active');
-  tabSpamBtn.classList.remove('active');
-  tabRequestsPane.classList.remove('hidden');
-  tabSpamPane.classList.add('hidden');
 }
 
 tabRequestsBtn.addEventListener('click', () => setTab('requests'));
@@ -1418,24 +1117,17 @@ tabSpamBtn.addEventListener('click', () => setTab('spam'));
 
 eventSel.addEventListener('change', async () => {
   currentCode = eventSel.value || '';
-  rowsCache = [];
-  vipNamesCache = [];
-  setVipMeta([]);
-  latestFetchIssued = 0;
-  latestFetchApplied = 0;
-  hasEverLoadedRows = false;
-  await fetchRows({ background: false });
+  await fetchRows({ background:false });
   startPolling();
 });
 
 (async function boot(){
+  await loadActiveEvents();
   initCollapsibles();
   setTab('requests');
-  await loadActiveEvents();
-
   if (eventSel.value){
-    currentCode = eventSel.value || '';
-    await fetchRows({ background: false });
+    currentCode = eventSel.value;
+    await fetchRows({ background:false });
     startPolling();
   }
 })();
