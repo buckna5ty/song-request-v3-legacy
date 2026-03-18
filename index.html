@@ -148,124 +148,251 @@
 </div>
 
 <script>
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbyGrdD2pENjIGhqNIKl5cf4qG6fdSKGR78X90XwpjcB5XDeUEXqzL-6yWS0Yr2CZJ0AuA/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwPWKOGaVbDTbb4CTjBL-aA3LMgDApWmlNENEcNoh75gixZFnHqAMTnQj4p4iTyUgaaAA/exec';
 const REDIRECT_DELAY_MS = 2200;
+const CLIENT_TOKEN_KEY = 'dce_client_token';
+const EVENT_STORAGE_KEY = 'dce_event';
 
 const urlp = new URLSearchParams(location.search);
 const DEBUG = urlp.get('debug') === '1';
-function saveEventCode(code){ try{ localStorage.setItem('dce_event', code); }catch{} }
-function loadEventCode(){ try{ return localStorage.getItem('dce_event') || ''; }catch{ return ''; } }
+
+function saveEventCode(code){ try{ localStorage.setItem(EVENT_STORAGE_KEY, code); }catch{} }
+function loadEventCode(){ try{ return localStorage.getItem(EVENT_STORAGE_KEY) || ''; }catch{ return ''; } }
+
+function randomToken(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function getClientToken(){
+  try{
+    let token = localStorage.getItem(CLIENT_TOKEN_KEY);
+    if (!token) {
+      token = randomToken();
+      localStorage.setItem(CLIENT_TOKEN_KEY, token);
+    }
+    return token;
+  }catch{
+    return randomToken();
+  }
+}
+
+const CLIENT_TOKEN = getClientToken();
+const SESSION_TOKEN = randomToken();
 
 let EVENT_CODE = (urlp.get('event') || '').trim();
 if (!EVENT_CODE && document.referrer) {
-  try{ const ref=new URL(document.referrer); const refEvent=ref.searchParams.get('event'); if(refEvent) EVENT_CODE=refEvent.trim(); }catch{}
+  try{
+    const ref = new URL(document.referrer);
+    const refEvent = ref.searchParams.get('event');
+    if(refEvent) EVENT_CODE = refEvent.trim();
+  }catch{}
 }
 if (!EVENT_CODE) { EVENT_CODE = loadEventCode(); }
 if (EVENT_CODE) { saveEventCode(EVENT_CODE); }
 
-const $=s=>document.querySelector(s);
-const nameInput=$('#yourName'), q=$('#q'), clearBtn=$('#clearBtn'), resultsEl=$('#results'), selectedBox=$('#selected'), statusEl=$('#status'), submitBtn=$('#submitBtn'), selTitle=$('#selTitle'), selArtist=$('#selArtist'); let selCoverEl=$('#selCover');
-const titleInput=$('#songTitle'), artistInput=$('#artist'), linkInput=$('#link');
-const tyOverlay=$('#tyOverlay'); const btnTxt=document.querySelector('.btntxt'); const btnSpin=document.querySelector('.spin');
+const $ = s => document.querySelector(s);
+const nameInput = $('#yourName'),
+      q = $('#q'),
+      clearBtn = $('#clearBtn'),
+      resultsEl = $('#results'),
+      selectedBox = $('#selected'),
+      statusEl = $('#status'),
+      submitBtn = $('#submitBtn'),
+      selTitle = $('#selTitle'),
+      selArtist = $('#selArtist');
+let selCoverEl = $('#selCover');
+
+const titleInput = $('#songTitle'),
+      artistInput = $('#artist'),
+      linkInput = $('#link');
+
+const tyOverlay = $('#tyOverlay');
+const btnTxt = document.querySelector('.btntxt');
 
 function showDebug(msg){
-  const pill=document.getElementById('debugPill');
+  const pill = document.getElementById('debugPill');
   if (!DEBUG) return;
   pill.classList.add('show');
-  pill.textContent = msg || (EVENT_CODE ? `Event: ${EVENT_CODE}` : 'No event detected');
+  pill.textContent = msg || (
+    EVENT_CODE
+      ? `Event: ${EVENT_CODE} | Client: ${CLIENT_TOKEN.slice(0,8)}...`
+      : `No event detected | Client: ${CLIENT_TOKEN.slice(0,8)}...`
+  );
 }
 if (DEBUG) showDebug();
 
-function setStatus(m='',err=false){ statusEl.textContent=m; statusEl.style.color=err?'#ffb4b4':'var(--muted)'; }
+function setStatus(m='', err=false){
+  statusEl.textContent = m;
+  statusEl.style.color = err ? '#ffb4b4' : 'var(--muted)';
+}
+
 function clearResults(){ resultsEl.innerHTML=''; }
 function showResults(){ resultsEl.classList.remove('hidden'); }
 function hideResults(){ resultsEl.classList.add('hidden'); clearResults(); }
+
 function hideSelected(){
-  selectedBox.style.display='none'; selectedBox.classList.remove('active');
-  if(selCoverEl && selCoverEl.tagName.toLowerCase()==='img'){ selCoverEl.outerHTML=`<div id="selCover" class="sel-cover" aria-hidden="true">♪</div>`; selCoverEl=document.getElementById('selCover'); }
-  selTitle.textContent=''; selArtist.textContent='';
+  selectedBox.style.display='none';
+  selectedBox.classList.remove('active');
+  if(selCoverEl && selCoverEl.tagName.toLowerCase()==='img'){
+    selCoverEl.outerHTML=`<div id="selCover" class="sel-cover" aria-hidden="true">♪</div>`;
+    selCoverEl=document.getElementById('selCover');
+  }
+  selTitle.textContent='';
+  selArtist.textContent='';
 }
 
-/* JSONP */
 function jsonp(url, cbParam='callback'){
   return new Promise((res,rej)=>{
     const cb='cb_'+Math.random().toString(36).slice(2);
     const s=document.createElement('script');
-    s.src = url + (url.includes('?')?'&':'?') + cbParam + '=' + cb + '&t=' + Date.now();
-    const kill=setTimeout(()=>{ cleanup(); rej(new Error('timeout')); }, 9000);
+    s.src = url + (url.includes('?') ? '&' : '?') + cbParam + '=' + cb + '&t=' + Date.now();
+    const kill = setTimeout(()=>{ cleanup(); rej(new Error('timeout')); }, 9000);
     function cleanup(){ clearTimeout(kill); try{ delete window[cb]; }catch{} s.remove(); }
-    window[cb]=(data)=>{ cleanup(); res(data); };
-    s.onerror=()=>{ cleanup(); rej(new Error('jsonp error')); };
+    window[cb] = (data)=>{ cleanup(); res(data); };
+    s.onerror = ()=>{ cleanup(); rej(new Error('jsonp error')); };
     document.body.appendChild(s);
   });
 }
 
-/* Search providers */
 async function searchITunes(term){
   try{
     const data = await jsonp(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=musicTrack&limit=8`, 'callback');
-    return (data?.results||[]).map(t=>({title:t.trackName, artist:t.artistName, cover:t.artworkUrl100||t.artworkUrl60, link:t.trackViewUrl}));
+    return (data?.results||[]).map(t=>({
+      title:t.trackName,
+      artist:t.artistName,
+      cover:t.artworkUrl100||t.artworkUrl60,
+      link:t.trackViewUrl
+    }));
   }catch(_e){
     try{
-      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=musicTrack&limit=8`, {mode:'cors', cache:'no-store'});
+      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=musicTrack&limit=8`, {
+        mode:'cors',
+        cache:'no-store'
+      });
       if (r.ok) {
         const data = await r.json();
-        return (data?.results||[]).map(t=>({title:t.trackName, artist:t.artistName, cover:t.artworkUrl100||t.artworkUrl60, link:t.trackViewUrl}));
+        return (data?.results||[]).map(t=>({
+          title:t.trackName,
+          artist:t.artistName,
+          cover:t.artworkUrl100||t.artworkUrl60,
+          link:t.trackViewUrl
+        }));
       }
     }catch(__e){}
   }
   return [];
 }
+
 async function searchDeezer(term){
   try{
-    const data=await jsonp(`https://api.deezer.com/search?q=${encodeURIComponent(term)}&limit=8&output=jsonp`,'callback');
-    return (data?.data||[]).map(d=>({title:d.title, artist:d?.artist?.name||'', cover:d?.album?.cover_medium||d?.album?.cover||'', link:d.link||''}));
-  }catch(_e){ return []; }
-}
-async function searchMB(term){
-  try{
-    const r=await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(term)}&fmt=json&limit=8`,{
-      headers:{'User-Agent':'DCE-SongRequest/1.0 (https://www.davidcharlesevents.com)'}, cache:'no-store'
-    });
-    if(!r.ok) return [];
-    const data=await r.json();
-    return (data.recordings||[]).map(rec=>{
-      const ac=rec['artist-credit']; const artist=ac && ac[0] && ac[0].name ? ac[0].name : '';
-      return {title:rec.title, artist, cover:'', link:`https://musicbrainz.org/recording/${rec.id}`};
-    });
-  }catch(_e){ return []; }
+    const data = await jsonp(`https://api.deezer.com/search?q=${encodeURIComponent(term)}&limit=8&output=jsonp`, 'callback');
+    return (data?.data||[]).map(d=>({
+      title:d.title,
+      artist:d?.artist?.name||'',
+      cover:d?.album?.cover_medium||d?.album?.cover||'',
+      link:d.link||''
+    }));
+  }catch(_e){
+    return [];
+  }
 }
 
-/* Render */
+async function searchMB(term){
+  try{
+    const r = await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(term)}&fmt=json&limit=8`, {
+      headers:{'User-Agent':'DCE-SongRequest/1.0 (https://www.davidcharlesevents.com)'},
+      cache:'no-store'
+    });
+    if(!r.ok) return [];
+    const data = await r.json();
+    return (data.recordings||[]).map(rec=>{
+      const ac=rec['artist-credit'];
+      const artist=ac && ac[0] && ac[0].name ? ac[0].name : '';
+      return {
+        title:rec.title,
+        artist,
+        cover:'',
+        link:`https://musicbrainz.org/recording/${rec.id}`
+      };
+    });
+  }catch(_e){
+    return [];
+  }
+}
+
 function render(list){
-  clearResults(); if(!list.length){ setStatus('No results'); return; } setStatus('');
+  clearResults();
+  if(!list.length){
+    setStatus('No results');
+    return;
+  }
+  setStatus('');
   showResults();
+
   list.forEach(({title,artist,cover,link})=>{
-    const div=document.createElement('div'); div.className='item'; div.setAttribute('role','button'); div.setAttribute('tabindex','0');
-    const coverHTML=cover?`<img class="cover" src="${cover}" alt="Album cover" loading="lazy" decoding="async" width="56" height="56">`:`<div class="cover" aria-hidden="true">♪</div>`;
+    const div=document.createElement('div');
+    div.className='item';
+    div.setAttribute('role','button');
+    div.setAttribute('tabindex','0');
+
+    const coverHTML=cover
+      ? `<img class="cover" src="${cover}" alt="Album cover" loading="lazy" decoding="async" width="56" height="56">`
+      : `<div class="cover" aria-hidden="true">♪</div>`;
+
     div.innerHTML=`${coverHTML}<div class="info"><p class="ttl">${title||'Unknown Title'}</p><p class="art">${artist||'Unknown Artist'}</p></div>`;
+
     const choose=()=>useSong({title,artist,cover,link}, div);
-    div.onclick=choose; div.onkeyup=e=>{ if(e.key==='Enter'||e.key===' ') choose(); };
+    div.onclick=choose;
+    div.onkeyup=e=>{ if(e.key==='Enter'||e.key===' ') choose(); };
     resultsEl.appendChild(div);
   });
 }
+
 function showSelectedCard({title,artist,cover}){
-  if(cover){ const img=document.createElement('img'); img.src=cover; img.alt='Album cover'; img.className='sel-cover'; img.loading='lazy'; img.decoding='async'; if(selCoverEl) selCoverEl.replaceWith(img); selCoverEl=img; }
-  else{ if(!selCoverEl || selCoverEl.tagName.toLowerCase()==='img'){ const box=document.createElement('div'); box.id='selCover'; box.className='sel-cover'; box.setAttribute('aria-hidden','true'); box.textContent='♪'; if(selCoverEl) selCoverEl.replaceWith(box); selCoverEl=box; } }
-  selTitle.textContent=title||'Unknown Title'; selArtist.textContent=artist||'Unknown Artist';
-  selectedBox.style.display='block'; selectedBox.classList.add('active');
-}
-function useSong({title,artist,cover,link}, el){
-  document.querySelectorAll('.item').forEach(x=>x.classList.remove('selected')); el?.classList.add('selected');
-  titleInput.value = title || ''; artistInput.value = artist || ''; linkInput.value = link || '';
-  showSelectedCard({title,artist,cover,link}); hideResults();
+  if(cover){
+    const img=document.createElement('img');
+    img.src=cover;
+    img.alt='Album cover';
+    img.className='sel-cover';
+    img.loading='lazy';
+    img.decoding='async';
+    if(selCoverEl) selCoverEl.replaceWith(img);
+    selCoverEl=img;
+  } else {
+    if(!selCoverEl || selCoverEl.tagName.toLowerCase()==='img'){
+      const box=document.createElement('div');
+      box.id='selCover';
+      box.className='sel-cover';
+      box.setAttribute('aria-hidden','true');
+      box.textContent='♪';
+      if(selCoverEl) selCoverEl.replaceWith(box);
+      selCoverEl=box;
+    }
+  }
+  selTitle.textContent=title||'Unknown Title';
+  selArtist.textContent=artist||'Unknown Artist';
+  selectedBox.style.display='block';
+  selectedBox.classList.add('active');
 }
 
-/* Search events */
-let debounce=null,lastTerm='';
+function useSong({title,artist,cover,link}, el){
+  document.querySelectorAll('.item').forEach(x=>x.classList.remove('selected'));
+  el?.classList.add('selected');
+  titleInput.value = title || '';
+  artistInput.value = artist || '';
+  linkInput.value = link || '';
+  showSelectedCard({title,artist,cover,link});
+  hideResults();
+}
+
+let debounce=null, lastTerm='';
 q.addEventListener('input', ()=>{
-  const raw=q.value; if(raw.length>=1) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
-  const t=raw.trim(); if(t===lastTerm) return; lastTerm=t;
+  const raw=q.value;
+  if(raw.length>=1) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
+  const t=raw.trim();
+  if(t===lastTerm) return;
+  lastTerm=t;
   clearTimeout(debounce);
   debounce=setTimeout(async()=>{
     if(!t){ setStatus(''); hideResults(); return; }
@@ -276,10 +403,12 @@ q.addEventListener('input', ()=>{
     if(list.length) render(list); else { setStatus('No results'); hideResults(); }
   }, 240);
 });
+
 q.addEventListener('keydown', e=>{
   if(e.key==='Enter'){
     e.preventDefault();
-    const t=q.value.trim(); if(!t) return;
+    const t=q.value.trim();
+    if(!t) return;
     setStatus('Searching…');
     (async()=>{
       let list=await searchITunes(t);
@@ -289,36 +418,130 @@ q.addEventListener('keydown', e=>{
     })();
   }
 });
+
 clearBtn.addEventListener('click', ()=>{
-  q.value=''; lastTerm=''; clearBtn.classList.remove('show'); setStatus(''); hideResults(); hideSelected();
-  titleInput.value=''; artistInput.value=''; linkInput.value=''; q.focus({preventScroll:true});
+  q.value='';
+  lastTerm='';
+  clearBtn.classList.remove('show');
+  setStatus('');
+  hideResults();
+  hideSelected();
+  titleInput.value='';
+  artistInput.value='';
+  linkInput.value='';
+  q.focus({preventScroll:true});
 });
 
-/* Submit */
-function openThankYou(){ tyOverlay.style.display='flex'; }
+function openThankYou(){
+  tyOverlay.style.display='flex';
+}
+
+function closeThankYou(){
+  tyOverlay.style.display='none';
+}
+
 function setBtnLoading(on){
-  if(on){ submitBtn.classList.add('loading'); submitBtn.setAttribute('disabled','disabled'); btnTxt.textContent='Sending…'; }
-  else{ submitBtn.classList.remove('loading'); submitBtn.removeAttribute('disabled'); btnTxt.textContent='SUBMIT'; }
+  if(on){
+    submitBtn.classList.add('loading');
+    submitBtn.setAttribute('disabled','disabled');
+    btnTxt.textContent='Sending…';
+  } else {
+    submitBtn.classList.remove('loading');
+    submitBtn.removeAttribute('disabled');
+    btnTxt.textContent='SUBMIT';
+  }
 }
+
+function resetForm(){
+  nameInput.value='';
+  q.value='';
+  lastTerm='';
+  clearBtn.classList.remove('show');
+  setStatus('');
+  hideResults();
+  hideSelected();
+  titleInput.value='';
+  artistInput.value='';
+  linkInput.value='';
+}
+
 function redirectBack(){
-  const base=location.origin+location.pathname; const params=new URLSearchParams(); if (EVENT_CODE) params.set('event',EVENT_CODE);
-  const next=params.toString()?`${base}?${params.toString()}`:base; location.replace(next);
+  const base=location.origin+location.pathname;
+  const params=new URLSearchParams();
+  if (EVENT_CODE) params.set('event',EVENT_CODE);
+  const next=params.toString() ? `${base}?${params.toString()}` : base;
+  location.replace(next);
 }
-function writeRequest(){
-  const nameVal=(nameInput.value||'').trim(), titleVal=(titleInput.value||'').trim(), artistVal=(artistInput.value||'').trim(), linkVal=(linkInput.value||'').trim();
-  if (!titleVal && !artistVal){ setStatus('Pick a song first.'); q.focus(); return; }
-  if (!EVENT_CODE){ setStatus('No event selected. Re-scan the QR and try again.', true); return; }
+
+async function writeRequest(){
+  const nameVal=(nameInput.value||'').trim();
+  const titleVal=(titleInput.value||'').trim();
+  const artistVal=(artistInput.value||'').trim();
+  const linkVal=(linkInput.value||'').trim();
+
+  if (!titleVal && !artistVal){
+    setStatus('Pick a song first.');
+    q.focus();
+    return;
+  }
+
+  if (!EVENT_CODE){
+    setStatus('No event selected. Re-scan the QR and try again.', true);
+    return;
+  }
+
   saveEventCode(EVENT_CODE);
-  setBtnLoading(true); openThankYou();
-  const qs=new URLSearchParams({ mode:'write', event:EVENT_CODE, name:nameVal, song_title:titleVal, artist:artistVal, link:linkVal, ua:navigator.userAgent, referer:document.referrer||location.href });
-  const cb='cb_'+Math.random().toString(36).slice(2); window[cb]=(data)=>{ try{ delete window[cb]; }catch{} };
-  const s=document.createElement('script'); s.src=ENDPOINT_URL+'?'+qs.toString()+'&callback='+cb+'&t='+Date.now(); s.onerror=()=>{ try{ delete window[cb]; }catch{} };
-  document.body.appendChild(s);
-  setTimeout(()=>{ setBtnLoading(false); nameInput.value=''; q.value=''; lastTerm=''; clearBtn.classList.remove('show'); setStatus(''); hideResults(); hideSelected(); redirectBack(); }, REDIRECT_DELAY_MS);
+  setBtnLoading(true);
+  openThankYou();
+
+  try{
+    const qs = new URLSearchParams({
+      mode:'write',
+      event:EVENT_CODE,
+      name:nameVal,
+      song_title:titleVal,
+      artist:artistVal,
+      link:linkVal,
+      ua:navigator.userAgent,
+      referer:document.referrer||location.href,
+      client_token:CLIENT_TOKEN,
+      session_token:SESSION_TOKEN
+    });
+
+    const data = await jsonp(ENDPOINT_URL + '?' + qs.toString(), 'callback');
+
+    setBtnLoading(false);
+
+    if (!data || data.ok !== true){
+      closeThankYou();
+      setStatus((data && data.error) ? data.error : 'Unable to submit request.', true);
+      return;
+    }
+
+    if (data.accepted === false){
+      closeThankYou();
+      setStatus(data.userMessage || 'That song was already sent recently from this device.', true);
+      return;
+    }
+
+    setTimeout(()=>{
+      resetForm();
+      redirectBack();
+    }, REDIRECT_DELAY_MS);
+
+  }catch(err){
+    closeThankYou();
+    setBtnLoading(false);
+    setStatus('Unable to submit request. Please try again.', true);
+  }
 }
+
 submitBtn.addEventListener('click', writeRequest);
 
-window.addEventListener('load', ()=>{ if (DEBUG) showDebug(); nameInput.focus({preventScroll:true}); });
+window.addEventListener('load', ()=>{
+  if (DEBUG) showDebug();
+  nameInput.focus({preventScroll:true});
+});
 </script>
 </body>
 </html>
