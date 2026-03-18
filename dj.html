@@ -17,31 +17,45 @@
     --amber:#f7b731;
     --danger:#b22222;
     --put:#d81b60;
-
-    --vip:#f4d35e;
-    --vip-bg:rgba(244,211,94,.12);
-    --vip-border:rgba(244,211,94,.45);
+    --vip:#d4af37;
 
     --radius:12px;
-    --maxw:1180px;
+    --maxw:1100px;
   }
 
   @font-face{
     font-family:"Adventor";
     src:url("texgyreadventor-regular.otf") format("opentype");
-    font-weight:400; font-style:normal; font-display:swap;
+    font-weight:400;
+    font-style:normal;
+    font-display:swap;
   }
 
   *{ box-sizing:border-box; }
+
   html,body{
-    margin:0; background:var(--bg); color:var(--ink);
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
     font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
 
-  .wrap{ max-width:var(--maxw); margin:0 auto; padding:16px 14px 56px; }
+  .wrap{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:16px 14px 56px;
+  }
 
-  .dce-logo{ text-align:center; margin:14px 0 6px; }
-  .dce-logo img{ max-width:min(220px,60vw); height:auto; }
+  .dce-logo{
+    text-align:center;
+    margin:14px 0 6px;
+  }
+
+  .dce-logo img{
+    max-width:min(220px,60vw);
+    height:auto;
+  }
+
   .page-title{
     text-align:center;
     margin:0 auto 26px;
@@ -58,85 +72,165 @@
     margin-bottom:14px;
   }
 
-  label{ display:block; font-size:14px; color:var(--muted); margin:0 0 6px; }
+  label{
+    display:block;
+    font-size:14px;
+    color:var(--muted);
+    margin:0 0 6px;
+  }
 
   select{
-    height:46px; border-radius:12px; border:1px solid #3a3a3a;
-    background:#2a2a2a; color:#fff; font-size:15px; padding:0 12px; width:100%;
+    height:46px;
+    border-radius:12px;
+    border:1px solid #3a3a3a;
+    background:#2a2a2a;
+    color:#fff;
+    font-size:15px;
+    padding:0 12px;
+    width:100%;
   }
 
   .inline-row{
-    display:flex; align-items:center; gap:10px;
-    margin-top:8px; min-height:24px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:8px;
+    min-height:24px;
+    flex-wrap:wrap;
   }
 
-  .inline-text{ font-size:14px; font-weight:600; }
+  .inline-text{
+    font-size:14px;
+    font-weight:600;
+  }
+
   .inline-text.good{ color:#34d399; }
   .inline-text.bad{ color:#ef4444; }
 
+  .meta-inline{
+    color:#d8d8d8;
+    font-size:13px;
+  }
+
   .progress{
-    position:relative; height:6px; flex:1 1 240px; max-width:360px;
-    background:#2a2a2a; border-radius:999px; overflow:hidden; border:1px solid #333;
+    position:relative;
+    height:6px;
+    flex:1 1 240px;
+    max-width:360px;
+    background:#2a2a2a;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid #333;
     display:none;
   }
+
   .progress.show{ display:block; }
+
   .progress::after{
-    content:""; position:absolute; inset:0;
+    content:"";
+    position:absolute;
+    inset:0;
     background:linear-gradient(90deg, rgba(29,206,201,.15) 0%, rgba(29,206,201,.65) 50%, rgba(29,206,201,.15) 100%);
-    transform:translateX(-100%); animation:bar 1.4s linear infinite;
+    transform:translateX(-100%);
+    animation:bar 1.4s linear infinite;
   }
-  @keyframes bar{ to{ transform:translateX(100%); } }
+
+  @keyframes bar{
+    to{ transform:translateX(100%); }
+  }
 
   .spin{
-    margin-left:auto; width:18px; height:18px; border-radius:50%;
-    border:2px solid rgba(255,255,255,.25); border-top-color:#bbb;
-    animation:spin .9s linear infinite; display:none;
+    margin-left:auto;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,.25);
+    border-top-color:#bbb;
+    animation:spin .9s linear infinite;
+    display:none;
   }
+
   .spin.show{ display:inline-block; }
-  @keyframes spin{ to{ transform:rotate(360deg);} }
 
-  .controls-grid{
-    display:grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap:12px;
-    margin-top:12px;
-  }
-
-  .vip-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap:12px;
-    margin-top:14px;
-    align-items:end;
-  }
-
-  .vip-status{
-    margin-top:0;
-    color:#ddd;
-    font-size:13px;
-    white-space:nowrap;
+  @keyframes spin{
+    to{ transform:rotate(360deg); }
   }
 
   .tabs-bar{
-    display:flex; align-items:flex-end; gap:0; border-bottom:1px solid var(--border); padding:0 6px; margin-bottom:10px;
+    display:flex;
+    align-items:flex-end;
+    gap:0;
+    border-bottom:1px solid var(--border);
+    padding:0 6px;
+    margin-bottom:10px;
   }
+
   .tab-btn{
-    height:36px; padding:0 14px; font-size:13px; color:#fff;
-    background:#2f2f2f; border:1px solid var(--border); border-bottom:none;
-    border-top-left-radius:10px; border-top-right-radius:10px;
-    margin:0 6px; transform:translateY(1px); cursor:pointer;
+    height:36px;
+    padding:0 14px;
+    font-size:13px;
+    color:#fff;
+    background:#2f2f2f;
+    border:1px solid var(--border);
+    border-bottom:none;
+    border-top-left-radius:10px;
+    border-top-right-radius:10px;
+    margin:0 6px;
+    transform:translateY(1px);
+    cursor:pointer;
   }
-  .tab-btn.active{ background:var(--subsection); transform:translateY(0); }
-  .hidden{ display:none!important; }
 
-  .collapsible{ background:var(--subsection); border:1px solid var(--border); border-radius:12px; padding:10px; margin-top:10px; }
-  .collapsible-header{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
-  .twist{ width:18px; height:18px; display:grid; place-items:center; margin-left:8px; }
-  .collapsible-body{ display:none; margin-top:10px; }
-  .collapsible.open .collapsible-body{ display:block; }
-  .count-pill{ font-size:13px; color:#dcdcdc; opacity:.9; margin-left:8px; }
+  .tab-btn.active{
+    background:var(--subsection);
+    transform:translateY(0);
+  }
 
-  .list{ display:grid; gap:10px; }
+  .hidden{ display:none !important; }
+
+  .collapsible{
+    background:var(--subsection);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px;
+    margin-top:10px;
+  }
+
+  .collapsible-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    user-select:none;
+  }
+
+  .twist{
+    width:18px;
+    height:18px;
+    display:grid;
+    place-items:center;
+    margin-left:8px;
+  }
+
+  .collapsible-body{
+    display:none;
+    margin-top:10px;
+  }
+
+  .collapsible.open .collapsible-body{
+    display:block;
+  }
+
+  .count-pill{
+    font-size:13px;
+    color:#dcdcdc;
+    opacity:.9;
+    margin-left:8px;
+  }
+
+  .list{
+    display:grid;
+    gap:10px;
+  }
 
   .card{
     background:var(--section);
@@ -149,42 +243,45 @@
     align-items:start;
   }
 
-  .card.vip-card{
-    background:linear-gradient(180deg, var(--vip-bg) 0%, rgba(54,54,54,.96) 100%);
-    border-color:var(--vip-border);
-    box-shadow:0 0 0 1px rgba(244,211,94,.15), 0 8px 18px rgba(0,0,0,.18);
-  }
-
-  .card.appear{ opacity:0; transform:translateY(8px); }
-  .card.appear.card-ready{ transition:opacity .28s ease, transform .28s ease; opacity:1; transform:none; }
-  .no-anim *{ transition:none!important; }
-
-  @media (max-width:900px){
-    .controls-grid{ grid-template-columns: 1fr 1fr; }
-    .vip-grid{ grid-template-columns: 1fr; }
-    .vip-status{ white-space:normal; }
-  }
-
   @media (max-width:760px){
     .card{ grid-template-columns:64px 1fr; }
     .card .actions{ grid-column:1/-1; }
   }
 
   .thumb{
-    width:64px;height:64px;border-radius:10px;background:#1f1f1f;object-fit:cover;display:block; align-self:start;
+    width:64px;
+    height:64px;
+    border-radius:10px;
+    background:#1f1f1f;
+    object-fit:cover;
+    display:block;
+    align-self:start;
     cursor:pointer;
   }
+
   .meta{ min-width:0; }
 
   .title{
-    margin:0 0 2px; font-weight:800; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;
+    margin:0 0 2px;
+    font-weight:800;
+    font-size:16px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#fff;
     cursor:pointer;
     text-decoration:underline;
     text-decoration-thickness:1px;
     text-underline-offset:3px;
   }
+
   .sub{
-    margin:0; color:#e6e6e6; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    margin:0;
+    color:#e6e6e6;
+    font-size:13px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
     cursor:pointer;
     text-decoration:underline;
     text-decoration-thickness:1px;
@@ -192,61 +289,137 @@
   }
 
   .reqline{
-    display:flex; align-items:center; gap:10px; margin-top:6px; cursor:pointer; user-select:none; flex-wrap:wrap;
-  }
-  .reqline .car{ font-size:18px; line-height:1; font-weight:800; color:#eaeaea; }
-  .reqline .txt{ font-size:14px; color:#eaeaea; font-weight:700; }
-
-  .vip-badge{
-    display:inline-flex;
+    display:flex;
     align-items:center;
-    justify-content:center;
-    padding:2px 8px;
+    gap:10px;
+    margin-top:2px;
+    cursor:pointer;
+    user-select:none;
+  }
+
+  .reqline .car{
+    font-size:18px;
+    line-height:1;
+    font-weight:800;
+    color:#eaeaea;
+  }
+
+  .reqline .txt{
+    font-size:14px;
+    color:#eaeaea;
+    font-weight:700;
+  }
+
+  .vip-chip{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 8px;
     border-radius:999px;
-    border:1px solid rgba(244,211,94,.45);
-    background:rgba(244,211,94,.12);
-    color:var(--vip);
     font-size:11px;
     font-weight:800;
     letter-spacing:.04em;
+    background:rgba(212,175,55,.12);
+    border:1px solid rgba(212,175,55,.45);
+    color:#f7d774;
   }
 
-  .vip-people{
+  .names-box{
     margin-top:6px;
-    font-size:12px;
-    color:var(--vip);
+    background:var(--subsection);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 10px;
+    display:none;
   }
 
-  .names-box{ margin-top:6px; background:var(--subsection); border:1px solid var(--border); border-radius:10px; padding:8px 10px; display:none; }
   .names-box.open{ display:block; }
-  .names-box .hdr{ color:#cfcfcf; font-size:13px; margin:0 0 4px; }
-  .names-box ul{ margin:0; padding-left:18px; }
-  .names-box li{ margin:3px 0; color:#fafafa; font-size:13px; }
 
-  .actions{ display:grid; gap:6px; align-self:start; }
+  .names-box .hdr{
+    color:#cfcfcf;
+    font-size:13px;
+    margin:0 0 4px;
+  }
+
+  .names-box ul{
+    margin:0;
+    padding-left:18px;
+  }
+
+  .names-box li{
+    margin:3px 0;
+    color:#fafafa;
+    font-size:13px;
+  }
+
+  .vip-star{
+    color:var(--vip);
+    font-weight:900;
+    margin-left:6px;
+  }
+
+  .actions{
+    display:grid;
+    gap:6px;
+    align-self:start;
+  }
+
   .btn{
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:0 10px; height:34px; font-size:12px; line-height:1;
-    border-radius:8px; border:1px solid transparent; cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    height:30px;
+    font-size:12px;
+    line-height:1;
+    border-radius:8px;
+    border:1px solid transparent;
+    cursor:pointer;
     box-shadow:0 2px 0 rgba(0,0,0,.35), 0 8px 14px rgba(0,0,0,.15);
-    width:88%; margin:0 auto;
+    width:82%;
+    margin:0 auto;
+  }
+
+  .btn:hover{ filter:brightness(1.05); }
+
+  .btn.played{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#000;
+  }
+
+  .btn.unplayed{
+    background:var(--amber);
+    border-color:var(--amber);
+    color:#000;
+  }
+
+  .btn.remove{
+    background:var(--danger);
+    border-color:var(--danger);
     color:#fff;
   }
-  .btn:hover{ filter:brightness(1.05); }
-  .btn.played{   background:var(--accent); border-color:var(--accent); color:#000; }
-  .btn.unplayed{ background:var(--amber);  border-color:var(--amber);  color:#000; }
-  .btn.remove{   background:var(--danger); border-color:var(--danger); color:#fff; }
-  .btn.putback{  background:var(--put);    border-color:var(--put);    color:#fff; }
-  .btn.vipadd{   background:#9b7f11; border-color:#9b7f11; color:#fff; }
-  .btn.vipremove{background:#5b5b5b; border-color:#5b5b5b; color:#fff; }
-  .btn[disabled]{ opacity:.7; cursor:not-allowed; }
 
-  .footer-line{ margin-top:10px; color:#fff; font-size:12px; }
+  .btn.putback{
+    background:var(--put);
+    border-color:var(--put);
+    color:#fff;
+  }
 
-  .spam-reason{
-    margin-top:6px;
+  .btn[disabled]{
+    opacity:.65;
+    cursor:not-allowed;
+  }
+
+  .footer-line{
+    margin-top:10px;
+    color:#fff;
     font-size:12px;
-    color:#ffb4b4;
+  }
+
+  .empty-state{
+    color:#d0d0d0;
+    font-size:14px;
+    padding:10px 2px;
   }
 </style>
 </head>
@@ -255,6 +428,7 @@
     <div class="dce-logo">
       <img src="assets/dce-logo.png" alt="David Charles Events" onerror="this.style.display='none'">
     </div>
+
     <div class="page-title">REQUESTS</div>
 
     <div class="panel">
@@ -265,47 +439,7 @@
         <span id="inlineText" class="inline-text"></span>
         <div id="inlineProgress" class="progress"></div>
         <span id="inlineSpin" class="spin" aria-hidden="true"></span>
-      </div>
-
-      <div class="controls-grid">
-        <div>
-          <label for="sortSel">Sort Requests By</label>
-          <select id="sortSel">
-            <option value="most_requested">Most Requested</option>
-            <option value="newest">Newest Request</option>
-            <option value="song_az">Song A–Z</option>
-            <option value="artist_az">Artist A–Z</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="filterSel">Filter Requests</label>
-          <select id="filterSel">
-            <option value="all">All Requests</option>
-            <option value="vip_only">VIP Only</option>
-            <option value="non_vip_only">Non-VIP Only</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="vipFilterSel">Filter by VIP Person</label>
-          <select id="vipFilterSel">
-            <option value="">All VIPs</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="requesterVipSel">VIP Management</label>
-          <select id="requesterVipSel">
-            <option value="">Select requester</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="vip-grid">
-        <button id="markVipBtn" class="btn vipadd" type="button">Mark as VIP</button>
-        <button id="removeVipBtn" class="btn vipremove" type="button">Remove VIP</button>
-        <div id="vipStatus" class="vip-status">VIPs for this event: 0</div>
+        <span id="vipMeta" class="meta-inline"></span>
       </div>
     </div>
 
@@ -317,31 +451,31 @@
 
       <div id="tabRequestsPane">
         <div class="collapsible open" id="reqWrap">
-          <div class="collapsible-header" data-target="reqBody">
+          <div class="collapsible-header">
             <div>Requests <span id="reqCount" class="count-pill">(0)</span></div>
             <div class="twist">▾</div>
           </div>
-          <div id="reqBody" class="collapsible-body">
+          <div class="collapsible-body">
             <div id="reqList" class="list"></div>
           </div>
         </div>
 
         <div class="collapsible" id="playedWrap">
-          <div class="collapsible-header" data-target="playedBody">
+          <div class="collapsible-header">
             <div>Played Songs <span id="playedCount" class="count-pill">(0)</span></div>
             <div class="twist">▸</div>
           </div>
-          <div id="playedBody" class="collapsible-body">
+          <div class="collapsible-body">
             <div id="playedList" class="list"></div>
           </div>
         </div>
 
         <div class="collapsible" id="removedWrap">
-          <div class="collapsible-header" data-target="removedBody">
+          <div class="collapsible-header">
             <div>Removed Songs <span id="removedCount" class="count-pill">(0)</span></div>
             <div class="twist">▸</div>
           </div>
-          <div id="removedBody" class="collapsible-body">
+          <div class="collapsible-body">
             <div id="removedList" class="list"></div>
           </div>
         </div>
@@ -362,22 +496,13 @@
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxh0I4H0szhTlV21aVA9DCMZXNCjIhZBqgiHSjzWnFlpDZQVW_l5FE1T9eUPEWyEmxufg/exec';
 const POLL_MS = 5000;
 
-let pollTimer = null;
-
 const $ = s => document.querySelector(s);
-const eventSel = $('#eventSel');
 
+const eventSel = $('#eventSel');
 const inlineText = $('#inlineText');
 const inlineProgress = $('#inlineProgress');
 const inlineSpin = $('#inlineSpin');
-
-const sortSel = $('#sortSel');
-const filterSel = $('#filterSel');
-const vipFilterSel = $('#vipFilterSel');
-const requesterVipSel = $('#requesterVipSel');
-const markVipBtn = $('#markVipBtn');
-const removeVipBtn = $('#removeVipBtn');
-const vipStatus = $('#vipStatus');
+const vipMeta = $('#vipMeta');
 
 const tabRequestsBtn = $('#tabRequests');
 const tabSpamBtn = $('#tabSpam');
@@ -397,13 +522,75 @@ const statusLine = $('#statusLine');
 
 let currentCode = '';
 let rowsCache = [];
-let vipNames = [];
-let initialRequestsLoaded = false;
+let pollTimer = null;
+let isLoadingEvents = false;
+let isFetchingRows = false;
+let latestFetchIssued = 0;
+let latestFetchApplied = 0;
+let isActionInFlight = false;
+let artCache = new Map();
+let vipNamesCache = [];
 
-const artCache = new Map();
+function safeString(v){
+  return String(v || '').trim();
+}
 
-function showFullLoading(msg){
-  inlineText.textContent = msg || 'Loading...';
+function escapeHTML(s){
+  return String(s || '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[m]));
+}
+
+function keySong(song, artist){
+  return `${safeString(song).toLowerCase()}|${safeString(artist).toLowerCase()}`;
+}
+
+function parseEventDate(dateStr){
+  const s = safeString(dateStr);
+  if (!s) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(s);
+}
+
+function pad2(n){
+  return String(n).padStart(2, '0');
+}
+
+function dow3(n){
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n] || '';
+}
+
+function formatHeaderDate(s){
+  const d = parseEventDate(s);
+  if (isNaN(d)) return '';
+  return `${dow3(d.getDay())} ${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}.${String(d.getFullYear()).slice(-2)}`;
+}
+
+function normalizePlayedStatus(row){
+  const s = safeString(row?.played_status).toLowerCase();
+  if (s === 'played') return 'played';
+  if (s === 'removed') return 'removed';
+  return 'not played';
+}
+
+function normalizeSpamStatus(row){
+  const s = safeString(row?.spam_status).toLowerCase();
+  return s || 'clean';
+}
+
+function isRowVip(row){
+  return !!row?.is_vip;
+}
+
+function showFullLoading(msg = 'Loading your requests...'){
+  inlineText.textContent = msg;
   inlineText.classList.remove('bad');
   inlineText.classList.add('good');
   inlineProgress.classList.add('show');
@@ -424,80 +611,60 @@ function clearInline(){
   inlineSpin.classList.remove('show');
 }
 
-function showEventsError(msg){
-  inlineText.textContent = msg || 'Could not load events.';
+function showEventsError(){
+  inlineText.textContent = 'Could not load events.';
   inlineText.classList.remove('good');
   inlineText.classList.add('bad');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.remove('show');
 }
 
-function parseEventDate(dateStr){
-  const s = String(dateStr || '').trim();
-  if (!s) return new Date(NaN);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
-    const parts = s.split('-').map(Number);
-    return new Date(parts[0], parts[1]-1, parts[2]);
-  }
-  return new Date(s);
+function setStatusMessage(msg, isError = false){
+  statusLine.textContent = msg || '';
+  statusLine.style.color = isError ? '#ef4444' : '#ffffff';
 }
 
-function pad2(n){ return String(n).padStart(2,'0'); }
-function dow3(n){ return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n] || ''; }
-
-function formatHeaderDate(s){
-  const d = parseEventDate(s);
-  if (isNaN(d)) return '';
-  return dow3(d.getDay()) + ' ' + pad2(d.getMonth()+1) + '.' + pad2(d.getDate()) + '.' + String(d.getFullYear()).slice(-2);
+function setVipMeta(vipNames){
+  const count = Array.isArray(vipNames) ? vipNames.length : 0;
+  vipMeta.textContent = currentCode ? `VIPs for this event: ${count}` : '';
 }
 
-function keySong(song, artist){
-  return String(song || '').toLowerCase() + '|' + String(artist || '').toLowerCase();
-}
+function jsonp(url, params = {}){
+  const qs = new URLSearchParams(params);
+  const cb = 'cb_' + Math.random().toString(36).slice(2);
+  qs.set('callback', cb);
+  qs.set('t', Date.now());
 
-function escapeHTML(s){
-  return String(s || '').replace(/[&<>"']/g, function(m){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('timeout'));
+    }, 10000);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      try{ delete window[cb]; }catch{}
+      s.remove();
+    }
+
+    window[cb] = (payload) => {
+      cleanup();
+      resolve(payload);
+    };
+
+    s.onerror = () => {
+      cleanup();
+      reject(new Error('jsonp'));
+    };
+
+    s.src = url + (url.includes('?') ? '&' : '?') + qs.toString();
+    document.body.appendChild(s);
   });
 }
 
-function normalizeNameKey(name){
-  return String(name || '').trim().toLowerCase().replace(/\s+/g,' ');
-}
-
-function isVipName(name){
-  const key = normalizeNameKey(name);
-  if (!key) return false;
-  return vipNames.some(v => normalizeNameKey(v) === key);
-}
-
-function safeArray(v){
-  return Array.isArray(v) ? v : [];
-}
-
-function safeRow(row){
-  row = row || {};
-  return {
-    timestamp: row.timestamp || '',
-    name: row.name || '',
-    song_title: row.song_title || row.song || '',
-    artist: row.artist || '',
-    link: row.link || '',
-    event: row.event || '',
-    id: row.id || '',
-    played_status: String(row.played_status || '').toLowerCase() || (row.played ? 'played' : 'not played'),
-    played: !!row.played,
-    removed: !!row.removed,
-    forwarded: !!row.forwarded,
-    spam_status: String(row.spam_status || '').toLowerCase(),
-    spam_reason: row.spam_reason || '',
-    spam_count: row.spam_count || 0,
-    is_vip: !!row.is_vip
-  };
-}
-
 function spotifyIdFromUrl(url){
-  const s = String(url || '').trim();
+  const s = safeString(url);
   if (!s) return null;
 
   let m = s.match(/^spotify:(track|artist|album):([A-Za-z0-9]+)$/i);
@@ -509,65 +676,41 @@ function spotifyIdFromUrl(url){
   return null;
 }
 
-function spotifyUriFromLinkOrSearch(obj){
-  obj = obj || {};
-  const parsed = spotifyIdFromUrl(obj.link);
-  const kind = obj.kind || 'track';
-  const song = String(obj.song || '').trim();
-  const artist = String(obj.artist || '').trim();
+function spotifyUriFromLinkOrSearch({ link, song, artist, kind }){
+  const parsed = spotifyIdFromUrl(link);
 
-  if (parsed && parsed.type === kind) return 'spotify:' + kind + ':' + parsed.id;
-  if (kind === 'track' && parsed && parsed.type === 'track') return 'spotify:track:' + parsed.id;
+  if (parsed && parsed.type === kind){
+    return `spotify:${kind}:${parsed.id}`;
+  }
+
+  if (kind === 'track' && parsed && parsed.type === 'track'){
+    return `spotify:track:${parsed.id}`;
+  }
+
+  const sSong = safeString(song);
+  const sArtist = safeString(artist);
 
   if (kind === 'artist'){
-    return 'spotify:search:' + encodeURIComponent(artist ? 'artist:' + artist : 'artist:' + song);
+    const q = sArtist ? `artist:${sArtist}` : `artist:${sSong}`;
+    return `spotify:search:${encodeURIComponent(q)}`;
   }
+
   if (kind === 'album'){
-    return 'spotify:search:' + encodeURIComponent(artist ? (song + ' ' + artist) : song);
+    const q = sArtist ? `${sSong} ${sArtist}` : sSong;
+    return `spotify:search:${encodeURIComponent(q)}`;
   }
-  if (song && artist){
-    return 'spotify:search:' + encodeURIComponent('track:' + song + ' artist:' + artist);
+
+  if (sSong && sArtist){
+    return `spotify:search:${encodeURIComponent(`track:${sSong} artist:${sArtist}`)}`;
   }
-  return 'spotify:search:' + encodeURIComponent(song || artist || '');
+
+  return `spotify:search:${encodeURIComponent(sSong || sArtist || '')}`;
 }
 
 function openSpotifyUri(uri){
-  try{ window.location.href = uri; }catch(_e){}
-}
-
-function jsonp(url, params){
-  params = params || {};
-  const qs = new URLSearchParams(params);
-  const cb = 'cb_' + Math.random().toString(36).slice(2);
-  qs.set('callback', cb);
-  qs.set('t', Date.now());
-
-  return new Promise(function(resolve, reject){
-    const s = document.createElement('script');
-    s.src = url + (url.includes('?') ? '&' : '?') + qs.toString();
-    const kill = setTimeout(function(){
-      cleanup();
-      reject(new Error('timeout'));
-    }, 9000);
-
-    function cleanup(){
-      clearTimeout(kill);
-      try{ delete window[cb]; }catch(_e){}
-      s.remove();
-    }
-
-    window[cb] = function(data){
-      cleanup();
-      resolve(data);
-    };
-
-    s.onerror = function(){
-      cleanup();
-      reject(new Error('jsonp'));
-    };
-
-    document.body.appendChild(s);
-  });
+  try{
+    window.location.href = uri;
+  }catch{}
 }
 
 async function getArtwork(song, artist){
@@ -576,313 +719,310 @@ async function getArtwork(song, artist){
 
   try{
     const data = await jsonp('https://itunes.apple.com/search', {
-      term: (String(song || '') + ' ' + String(artist || '')).trim(),
+      term: `${safeString(song)} ${safeString(artist)}`.trim(),
       entity: 'musicTrack',
       limit: 1
     });
-    const url = (data && data.results && data.results[0] && (data.results[0].artworkUrl100 || data.results[0].artworkUrl60)) || '';
+
+    const url = data?.results?.[0]?.artworkUrl100 || data?.results?.[0]?.artworkUrl60 || '';
     artCache.set(k, url || '');
     return url || '';
-  }catch(_e){
+  }catch{
     artCache.set(k, '');
     return '';
   }
 }
 
-async function loadVipNames(){
-  if(!currentCode){
-    vipNames = [];
-    updateVipUi();
-    return;
-  }
-
-  try{
-    const r = await jsonp(ENDPOINT_URL, { mode:'getVipList', event:currentCode });
-    vipNames = safeArray(r && r.vip_names).map(String);
-  }catch(_e){
-    vipNames = [];
-  }
-
-  updateVipUi();
-}
-
-function buildVipOptionLabel(name){
-  return '★ ' + name;
-}
-
-function updateVipUi(){
-  const uniqueRequesters = [...new Set(
-    rowsCache
-      .map(r => String(r.name || '').trim())
-      .filter(Boolean)
-      .sort((a,b)=>a.localeCompare(b))
-  )];
-
-  requesterVipSel.innerHTML = '<option value="">Select requester</option>' +
-    uniqueRequesters.map(function(name){
-      const label = isVipName(name) ? buildVipOptionLabel(name) : name;
-      return '<option value="' + escapeHTML(name) + '">' + escapeHTML(label) + '</option>';
-    }).join('');
-
-  vipFilterSel.innerHTML = '<option value="">All VIPs</option>' +
-    vipNames
-      .slice()
-      .sort((a,b)=>a.localeCompare(b))
-      .map(function(name){
-        return '<option value="' + escapeHTML(name) + '">' + escapeHTML(buildVipOptionLabel(name)) + '</option>';
-      }).join('');
-
-  vipStatus.textContent = 'VIPs for this event: ' + vipNames.length;
-}
-
-async function setVipNameStatus(name, vip){
-  if(!currentCode || !name) return;
-
-  showSpinnerOnly();
-  try{
-    const r = await jsonp(ENDPOINT_URL, {
-      mode:'setVipNameStatus',
-      event:currentCode,
-      name:name,
-      vip: vip ? '1' : '0'
-    });
-
-    if(r && r.ok){
-      vipNames = safeArray(r.vip_names).map(String);
-      rowsCache = rowsCache.map(function(row){
-        const updated = Object.assign({}, row);
-        updated.is_vip = isVipName(updated.name);
-        return updated;
-      });
-      updateVipUi();
-      renderAll(rowsCache);
-      statusLine.textContent = vip ? (name + ' marked as VIP.') : (name + ' removed from VIP.');
-    }else{
-      statusLine.textContent = (r && r.error) ? r.error : 'VIP update failed.';
-    }
-  }catch(_e){
-    statusLine.textContent = 'VIP update failed.';
-  }finally{
-    inlineSpin.classList.remove('show');
-  }
-}
-
 async function loadActiveEvents(){
+  if (isLoadingEvents) return;
+  isLoadingEvents = true;
   showFullLoading('Loading your events...');
-  try{
-    const r = await jsonp(ENDPOINT_URL, { mode:'listActive' });
-    const list = safeArray(r && r.events);
 
-    list.sort(function(a,b){
-      return parseEventDate(a.date || 0) - parseEventDate(b.date || 0);
-    });
+  try{
+    const r = await jsonp(ENDPOINT_URL, { mode: 'listActive' });
+    const list = Array.isArray(r?.events) ? r.events.slice() : [];
+    list.sort((a, b) => parseEventDate(a.date || 0) - parseEventDate(b.date || 0));
 
     eventSel.innerHTML = '';
 
-    if(!list.length){
+    if (!list.length){
       const opt = document.createElement('option');
       opt.value = '';
       opt.textContent = 'No active events';
       eventSel.appendChild(opt);
       currentCode = '';
-      vipNames = [];
-      updateVipUi();
-      showEventsError('No active events found.');
+      vipNamesCache = [];
+      setVipMeta([]);
+      showEventsError();
       return;
     }
 
-    list.forEach(function(ev){
+    for (const ev of list){
       const opt = document.createElement('option');
       opt.value = ev.code;
       const d = formatHeaderDate(ev.date);
-      opt.textContent = d ? (d + ' - ' + (ev.name || ev.code)) : (ev.name || ev.code);
+      opt.textContent = d ? `${d} - ${ev.name}` : (ev.name || ev.code);
       eventSel.appendChild(opt);
-    });
+    }
 
-    const pre = (new URLSearchParams(location.search).get('event') || '').trim();
-    if(pre && [...eventSel.options].some(o => o.value === pre)){
+    const pre = safeString(new URLSearchParams(location.search).get('event'));
+    if (pre && [...eventSel.options].some(o => o.value === pre)){
       eventSel.value = pre;
     }
 
     currentCode = eventSel.value || '';
     clearInline();
-  }catch(_e){
-    showEventsError('Could not load events.');
+  }catch{
+    showEventsError();
+  }finally{
+    isLoadingEvents = false;
+  }
+}
+
+function stopPolling(){
+  if (pollTimer){
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 }
 
 function startPolling(){
   stopPolling();
-  pollTimer = setInterval(function(){
-    fetchRows({ background:true });
+  pollTimer = setInterval(() => {
+    fetchRows({ background: true });
   }, POLL_MS);
 }
 
-function stopPolling(){
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = null;
-}
+async function fetchRows({ background = false } = {}){
+  if (!currentCode) return;
+  if (isFetchingRows) return;
 
-async function fetchRows(opts){
-  opts = opts || {};
-  const background = !!opts.background;
+  isFetchingRows = true;
+  const fetchId = ++latestFetchIssued;
 
-  if(!currentCode) return;
-
-  if (!initialRequestsLoaded || !background) showFullLoading('Loading your requests...');
-  else showSpinnerOnly();
+  if (background){
+    showSpinnerOnly();
+  }else{
+    showFullLoading('Loading your requests...');
+  }
 
   try{
-    const r = await jsonp(ENDPOINT_URL, { mode:'read', event:currentCode });
-    const rawRows = safeArray(r && r.rows);
-    rowsCache = rawRows.map(safeRow);
-    vipNames = safeArray(r && r.vip_names).map(String);
+    const r = await jsonp(ENDPOINT_URL, { mode: 'read', event: currentCode });
 
-    updateVipUi();
-    renderAll(rowsCache);
-
-    statusLine.textContent = '';
-    initialRequestsLoaded = true;
-  }catch(fetchErr){
-    console.error('fetchRows error:', fetchErr);
-    statusLine.textContent = 'Connection error.';
-  }finally{
-    if (!background) clearInline();
-    else inlineSpin.classList.remove('show');
-  }
-}
-
-function splitBuckets(rows){
-  const bySong = new Map();
-  const playedGroups = new Map();
-  const removedGroups = new Map();
-  const spamRows = [];
-
-  rows.forEach(function(row){
-    const song = row.song_title || '';
-    const artist = row.artist || '';
-    const link = row.link || '';
-    const key = keySong(song, artist);
-    const playedStatus = String(row.played_status || 'not played').toLowerCase();
-    const isSpam = ['possible_spam','spam'].includes(String(row.spam_status || '').toLowerCase());
-
-    if(isSpam){
-      spamRows.push({
-        key: (row.id || key) + '|spam',
-        song: song,
-        artist: artist,
-        name: row.name || 'Guest',
-        reason: row.spam_reason || 'spam_detected',
-        count: row.spam_count || 1
-      });
+    if (fetchId < latestFetchApplied){
       return;
     }
 
-    let targetMap = bySong;
-    if (playedStatus === 'played') targetMap = playedGroups;
-    else if (playedStatus === 'removed') targetMap = removedGroups;
+    latestFetchApplied = fetchId;
 
-    let g = targetMap.get(key);
-    if(!g){
-      g = {
-        key:key,
-        song:song,
-        artist:artist,
-        ids:[],
-        people:[],
-        peopleSet:new Set(),
-        vipPeople:[],
-        vipPeopleSet:new Set(),
-        link:'',
-        latestTs:0
-      };
-      targetMap.set(key, g);
+    if (!r || r.ok === false){
+      throw new Error(r?.error || 'read failed');
     }
 
-    g.ids.push(row.id);
+    const rawRows = Array.isArray(r.rows) ? r.rows : [];
+    const vipNames = Array.isArray(r.vip_names) ? r.vip_names : [];
 
-    const rowName = String(row.name || '').trim();
-    if(rowName && !g.peopleSet.has(rowName)){
-      g.peopleSet.add(rowName);
-      g.people.push(rowName);
-      if (isVipName(rowName) && !g.vipPeopleSet.has(rowName)){
-        g.vipPeopleSet.add(rowName);
-        g.vipPeople.push(rowName);
-      }
-    }
+    rowsCache = rawRows.map(x => ({ ...x }));
+    vipNamesCache = vipNames.slice();
 
-    if(!g.link && link) g.link = link;
+    renderAll(rowsCache);
+    setVipMeta(vipNamesCache);
+    setStatusMessage('');
+  }catch{
+    setStatusMessage('Connection error.', true);
+  }finally{
+    isFetchingRows = false;
+    clearInline();
+  }
+}
 
-    const ts = new Date(row.timestamp || 0).getTime();
-    if (!isNaN(ts) && ts > g.latestTs) g.latestTs = ts;
+function makeGroupedPersonMap(){
+  return new Map();
+}
+
+function addPersonToMap(map, row){
+  const name = safeString(row.name) || 'Guest';
+  const key = name.toLowerCase();
+  const existing = map.get(key);
+
+  if (existing){
+    existing.count += 1;
+    if (isRowVip(row)) existing.isVip = true;
+    return;
+  }
+
+  map.set(key, {
+    name,
+    count: 1,
+    isVip: isRowVip(row)
   });
+}
 
-  function finalize(map){
-    return [...map.values()].map(function(g){
-      return {
-        key:g.key,
-        song:g.song,
-        artist:g.artist,
-        ids:g.ids,
-        people:g.people,
-        vipPeople:g.vipPeople,
-        isVip:g.vipPeople.length > 0,
-        link:g.link,
-        latestTs:g.latestTs
+function splitBuckets(rows){
+  const requestMap = new Map();
+  const playedMap = new Map();
+  const removedMap = new Map();
+  const spamMap = new Map();
+
+  for (const row of rows){
+    const song = safeString(row.song_title || row.song);
+    const artist = safeString(row.artist);
+    const link = safeString(row.link);
+    const k = keySong(song, artist);
+    const playedStatus = normalizePlayedStatus(row);
+    const spamStatus = normalizeSpamStatus(row);
+
+    if (!song && !artist) continue;
+
+    if (spamStatus !== 'clean'){
+      const spamKey = `${k}|${safeString(row.name).toLowerCase()}|${spamStatus}`;
+      let sg = spamMap.get(spamKey);
+      if (!sg){
+        sg = {
+          key: spamKey,
+          song,
+          artist,
+          name: safeString(row.name) || 'Guest',
+          count: 0,
+          spam_status: spamStatus,
+          link,
+          is_vip: isRowVip(row)
+        };
+        spamMap.set(spamKey, sg);
+      }
+      sg.count += 1;
+      continue;
+    }
+
+    if (playedStatus === 'played'){
+      let g = playedMap.get(k);
+      if (!g){
+        g = {
+          key: k,
+          song,
+          artist,
+          ids: [],
+          link: '',
+          peopleMap: makeGroupedPersonMap(),
+          hasVip: false
+        };
+        playedMap.set(k, g);
+      }
+      g.ids.push(row.id);
+      addPersonToMap(g.peopleMap, row);
+      if (!g.link && link) g.link = link;
+      if (isRowVip(row)) g.hasVip = true;
+      continue;
+    }
+
+    if (playedStatus === 'removed'){
+      let g = removedMap.get(k);
+      if (!g){
+        g = {
+          key: k,
+          song,
+          artist,
+          ids: [],
+          link: '',
+          peopleMap: makeGroupedPersonMap(),
+          hasVip: false
+        };
+        removedMap.set(k, g);
+      }
+      g.ids.push(row.id);
+      addPersonToMap(g.peopleMap, row);
+      if (!g.link && link) g.link = link;
+      if (isRowVip(row)) g.hasVip = true;
+      continue;
+    }
+
+    let g = requestMap.get(k);
+    if (!g){
+      g = {
+        key: k,
+        song,
+        artist,
+        ids: [],
+        link: '',
+        peopleMap: makeGroupedPersonMap(),
+        hasVip: false
       };
+      requestMap.set(k, g);
+    }
+    g.ids.push(row.id);
+    addPersonToMap(g.peopleMap, row);
+    if (!g.link && link) g.link = link;
+    if (isRowVip(row)) g.hasVip = true;
+  }
+
+  function finalizeGroup(g){
+    const people = [...g.peopleMap.values()].sort((a, b) => {
+      if (a.isVip !== b.isVip) return a.isVip ? -1 : 1;
+      return a.name.localeCompare(b.name);
     });
+
+    return {
+      key: g.key,
+      song: g.song,
+      artist: g.artist,
+      ids: g.ids.slice(),
+      link: g.link,
+      people,
+      guestCount: people.length,
+      hasVip: g.hasVip
+    };
   }
 
   return {
-    requests: finalize(bySong),
-    played: finalize(playedGroups),
-    removed: finalize(removedGroups),
-    spam: spamRows
+    requests: [...requestMap.values()].map(finalizeGroup),
+    played: [...playedMap.values()].map(finalizeGroup),
+    removed: [...removedMap.values()].map(finalizeGroup),
+    spam: [...spamMap.values()].sort((a, b) => b.count - a.count || a.song.localeCompare(b.song))
   };
 }
 
-function namesBoxHTML(names){
-  return '<div class="names-box"><p class="hdr">Requesters</p><ul>' +
-    names.map(n => '<li>' + escapeHTML(n) + '</li>').join('') +
-    '</ul></div>';
+function namesBoxHTML(people){
+  const items = people.map(p => {
+    const star = p.isVip ? `<span class="vip-star">★</span>` : '';
+    return `<li>${escapeHTML(p.name)}${star}</li>`;
+  }).join('');
+
+  return `
+    <div class="names-box">
+      <p class="hdr">Requesters</p>
+      <ul>${items}</ul>
+    </div>
+  `;
 }
 
 function buildCardBase(obj){
-  const guests = obj.people.length;
   const el = document.createElement('div');
-  el.className = 'card appear' + (obj.isVip ? ' vip-card' : '');
+  el.className = 'card';
   el.dataset.key = obj.key;
   el.dataset.ids = JSON.stringify(obj.ids);
   el.dataset.song = obj.song || '';
   el.dataset.artist = obj.artist || '';
   el.dataset.link = obj.link || '';
 
-  const vipBadge = obj.isVip ? '<span class="vip-badge">VIP</span>' : '';
-  const vipPeopleLine = obj.vipPeople.length
-    ? '<div class="vip-people">VIP requester' + (obj.vipPeople.length === 1 ? '' : 's') + ': ' + escapeHTML(obj.vipPeople.join(', ')) + '</div>'
-    : '';
+  const vipChip = obj.hasVip ? `<div class="vip-chip">VIP REQUEST</div>` : '';
 
   el.innerHTML = `
     <img class="thumb" alt="">
     <div class="meta">
       <p class="title" title="Open in Spotify">${escapeHTML(obj.song || 'Unknown Title')}</p>
       <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
-      <div class="reqline">
-        <span class="car">▸</span>
-        <span class="txt">Requested by ${guests} guest${guests===1?'':'s'}</span>
-        ${vipBadge}
-      </div>
-      ${vipPeopleLine}
+      <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${obj.guestCount} guest${obj.guestCount === 1 ? '' : 's'}</span></div>
+      ${vipChip}
       ${namesBoxHTML(obj.people)}
     </div>
     <div class="actions"></div>
   `;
 
-  getArtwork(obj.song, obj.artist).then(function(src){
+  getArtwork(obj.song, obj.artist).then(src => {
     const img = el.querySelector('.thumb');
-    if(src) {
+    if (img && src){
       img.src = src;
-      img.alt = obj.song + ' cover';
+      img.alt = `${obj.song} cover`;
     }
   });
 
@@ -890,7 +1030,7 @@ function buildCardBase(obj){
   const reqline = el.querySelector('.reqline');
   const car = reqline.querySelector('.car');
 
-  reqline.addEventListener('click', function(){
+  reqline.addEventListener('click', () => {
     const open = box.classList.toggle('open');
     car.textContent = open ? '▾' : '▸';
   });
@@ -899,7 +1039,7 @@ function buildCardBase(obj){
   const artistEl = el.querySelector('.sub');
   const thumbEl = el.querySelector('.thumb');
 
-  titleEl.addEventListener('click', function(){
+  titleEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
@@ -908,7 +1048,7 @@ function buildCardBase(obj){
     }));
   });
 
-  artistEl.addEventListener('click', function(){
+  artistEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
@@ -917,7 +1057,7 @@ function buildCardBase(obj){
     }));
   });
 
-  thumbEl.addEventListener('click', function(){
+  thumbEl.addEventListener('click', () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
@@ -926,12 +1066,10 @@ function buildCardBase(obj){
     }));
   });
 
-  requestAnimationFrame(function(){ el.classList.add('card-ready'); });
   return el;
 }
 
 function updateCardBase(node, obj){
-  node.className = 'card' + (node.classList.contains('appear') ? ' appear' : '') + (obj.isVip ? ' vip-card' : '');
   node.dataset.ids = JSON.stringify(obj.ids);
   node.dataset.song = obj.song || '';
   node.dataset.artist = obj.artist || '';
@@ -939,50 +1077,113 @@ function updateCardBase(node, obj){
 
   node.querySelector('.title').textContent = obj.song || 'Unknown Title';
   node.querySelector('.sub').textContent = obj.artist || 'Unknown Artist';
-  node.querySelector('.txt').textContent = 'Requested by ' + obj.people.length + ' guest' + (obj.people.length === 1 ? '' : 's');
+  node.querySelector('.txt').textContent = `Requested by ${obj.guestCount} guest${obj.guestCount === 1 ? '' : 's'}`;
 
-  let badge = node.querySelector('.vip-badge');
-  if (obj.isVip && !badge){
-    badge = document.createElement('span');
-    badge.className = 'vip-badge';
-    badge.textContent = 'VIP';
-    node.querySelector('.reqline').appendChild(badge);
+  const existingChip = node.querySelector('.vip-chip');
+  if (obj.hasVip && !existingChip){
+    const chip = document.createElement('div');
+    chip.className = 'vip-chip';
+    chip.textContent = 'VIP REQUEST';
+    node.querySelector('.reqline').insertAdjacentElement('afterend', chip);
   }
-  if (!obj.isVip && badge) badge.remove();
-
-  let vipPeopleLine = node.querySelector('.vip-people');
-  if (obj.vipPeople.length){
-    if (!vipPeopleLine){
-      vipPeopleLine = document.createElement('div');
-      vipPeopleLine.className = 'vip-people';
-      node.querySelector('.meta').insertBefore(vipPeopleLine, node.querySelector('.names-box'));
-    }
-    vipPeopleLine.textContent = 'VIP requester' + (obj.vipPeople.length === 1 ? '' : 's') + ': ' + obj.vipPeople.join(', ');
-  } else if (vipPeopleLine){
-    vipPeopleLine.remove();
+  if (!obj.hasVip && existingChip){
+    existingChip.remove();
   }
 
-  node.querySelector('.names-box').innerHTML = '<p class="hdr">Requesters</p><ul>' +
-    obj.people.map(n => '<li>' + escapeHTML(n) + '</li>').join('') +
-    '</ul>';
+  node.querySelector('.names-box').outerHTML = namesBoxHTML(obj.people);
+
+  const reqline = node.querySelector('.reqline');
+  const namesBox = node.querySelector('.names-box');
+  const car = reqline.querySelector('.car');
+  reqline.onclick = () => {
+    const open = namesBox.classList.toggle('open');
+    car.textContent = open ? '▾' : '▸';
+  };
 }
 
-async function setPlayedStatusForKey(key, ids, targetStatus){
-  try{
-    showSpinnerOnly();
-    await Promise.all(ids.map(function(id){
-      return jsonp(ENDPOINT_URL, {
-        mode:'setPlayed',
-        id:id,
-        status:targetStatus
-      });
-    }));
+function renderList(container, items, makeNode, updateNode){
+  const existing = new Map();
+  Array.from(container.children).forEach(ch => existing.set(ch.dataset.key, ch));
 
-    await fetchRows({ background:false });
-  }catch(err){
-    console.error('setPlayedStatusForKey error:', err);
-    statusLine.textContent = 'Could not update request status.';
-    inlineSpin.classList.remove('show');
+  existing.forEach((node, key) => {
+    if (!items.some(it => it.key === key)){
+      node.remove();
+    }
+  });
+
+  let cursor = container.firstChild;
+
+  for (const it of items){
+    let node = existing.get(it.key);
+    if (!node){
+      node = makeNode(it);
+      container.insertBefore(node, cursor || null);
+    }else{
+      updateNode(node, it);
+      if (node !== cursor){
+        container.insertBefore(node, cursor || null);
+      }
+    }
+    cursor = node.nextSibling;
+  }
+
+  if (!items.length){
+    container.innerHTML = `<div class="empty-state">No songs in this section.</div>`;
+  }else{
+    const empties = container.querySelectorAll('.empty-state');
+    empties.forEach(x => x.remove());
+  }
+}
+
+function buildSpamCard(obj){
+  const el = document.createElement('div');
+  el.className = 'card';
+
+  const vipText = obj.is_vip ? `<span class="vip-star">★</span>` : '';
+  const statusText = obj.spam_status === 'spam' ? 'Spam' : 'Possible Spam';
+
+  el.innerHTML = `
+    <img class="thumb" alt="">
+    <div class="meta">
+      <p class="title">${escapeHTML(obj.song || 'Unknown Title')}</p>
+      <p class="sub">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
+      <p class="sub">Requested by ${escapeHTML(obj.name || 'Guest')}${vipText} (x${obj.count})</p>
+      <div class="vip-chip" style="margin-top:8px;">${escapeHTML(statusText)}</div>
+    </div>
+    <div class="actions"></div>
+  `;
+
+  getArtwork(obj.song, obj.artist).then(src => {
+    const img = el.querySelector('.thumb');
+    if (img && src){
+      img.src = src;
+      img.alt = `${obj.song} cover`;
+    }
+  });
+
+  return el;
+}
+
+async function setStatusForIds(ids, status){
+  if (!Array.isArray(ids) || !ids.length) return;
+  if (isActionInFlight) return;
+
+  isActionInFlight = true;
+  showSpinnerOnly();
+
+  try{
+    await Promise.all(ids.map(id => jsonp(ENDPOINT_URL, {
+      mode: 'setPlayed',
+      id,
+      status
+    })));
+
+    await fetchRows({ background: false });
+  }catch{
+    setStatusMessage('Could not update request status.', true);
+  }finally{
+    isActionInFlight = false;
+    clearInline();
   }
 }
 
@@ -992,227 +1193,173 @@ function attachRequestActions(card){
     <button class="btn played" type="button">Mark as Played</button>
     <button class="btn remove" type="button">Remove</button>
   `;
-  actions.querySelector('.btn.played').addEventListener('click', function(){
+
+  actions.querySelector('.btn.played').addEventListener('click', async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    setPlayedStatusForKey(card.dataset.key, ids, 'played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
   });
-  actions.querySelector('.btn.remove').addEventListener('click', function(){
+
+  actions.querySelector('.btn.remove').addEventListener('click', async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    setPlayedStatusForKey(card.dataset.key, ids, 'removed');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'removed');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
   });
 }
 
 function attachPlayedActions(card){
   const actions = card.querySelector('.actions');
-  actions.innerHTML = `<button class="btn unplayed" type="button">Mark as Not Played</button>`;
-  actions.querySelector('.btn.unplayed').addEventListener('click', function(){
+  actions.innerHTML = `
+    <button class="btn unplayed" type="button">Mark as Unplayed</button>
+  `;
+
+  actions.querySelector('.btn.unplayed').addEventListener('click', async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    setPlayedStatusForKey(card.dataset.key, ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
   });
 }
 
 function attachRemovedActions(card){
   const actions = card.querySelector('.actions');
-  actions.innerHTML = `<button class="btn putback" type="button">Put Back</button>`;
-  actions.querySelector('.btn.putback').addEventListener('click', function(){
+  actions.innerHTML = `
+    <button class="btn putback" type="button">Put Back</button>
+  `;
+
+  actions.querySelector('.btn.putback').addEventListener('click', async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    setPlayedStatusForKey(card.dataset.key, ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setStatusForIds(ids, 'not played');
+    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
   });
 }
 
-function renderList(container, items, makeNode, updateNode){
-  const existing = new Map();
-  Array.from(container.children).forEach(function(ch){ existing.set(ch.dataset.key, ch); });
-
-  existing.forEach(function(node, key){
-    if(!items.some(function(it){ return it.key === key; })){
-      node.remove();
-    }
-  });
-
-  container.classList.add('no-anim');
-
-  let cursor = container.firstChild;
-  items.forEach(function(it){
-    let node = existing.get(it.key);
-    if(!node){
-      node = makeNode(it);
-      container.insertBefore(node, cursor || null);
-    }else{
-      updateNode(node, it);
-      if(node !== cursor){
-        container.insertBefore(node, cursor || null);
-      }
-    }
-    cursor = node.nextSibling;
-  });
-
-  requestAnimationFrame(function(){ container.classList.remove('no-anim'); });
-}
-
-function applyRequestFiltersAndSorts(requests){
-  let out = requests.slice();
-
-  const filterMode = filterSel.value;
-  const vipPerson = vipFilterSel.value;
-
-  if (filterMode === 'vip_only'){
-    out = out.filter(x => x.isVip);
-  } else if (filterMode === 'non_vip_only'){
-    out = out.filter(x => !x.isVip);
+function renderSpamList(items){
+  spamList.innerHTML = '';
+  if (!items.length){
+    spamList.innerHTML = `<div class="empty-state">No spammed requests.</div>`;
+    return;
   }
 
-  if (vipPerson){
-    const vipKey = normalizeNameKey(vipPerson);
-    out = out.filter(function(x){
-      return x.vipPeople.some(function(name){
-        return normalizeNameKey(name) === vipKey;
-      });
-    });
+  for (const item of items){
+    spamList.appendChild(buildSpamCard(item));
   }
-
-  switch (sortSel.value){
-    case 'newest':
-      out.sort((a,b)=> (b.latestTs || 0) - (a.latestTs || 0) || (a.song || '').localeCompare(b.song || ''));
-      break;
-    case 'song_az':
-      out.sort((a,b)=> (a.song || '').localeCompare(b.song || '') || (a.artist || '').localeCompare(b.artist || ''));
-      break;
-    case 'artist_az':
-      out.sort((a,b)=> (a.artist || '').localeCompare(b.artist || '') || (a.song || '').localeCompare(b.song || ''));
-      break;
-    case 'most_requested':
-    default:
-      out.sort((a,b)=> b.people.length - a.people.length || (b.vipPeople.length - a.vipPeople.length) || (a.song || '').localeCompare(b.song || ''));
-      break;
-  }
-
-  return out;
 }
 
 function renderAll(rows){
-  const buckets = splitBuckets(rows);
-  const requests = buckets.requests;
-  const played = buckets.played;
-  const removed = buckets.removed;
-  const spam = buckets.spam;
+  const { requests, played, removed, spam } = splitBuckets(rows);
 
-  const sortedReq = applyRequestFiltersAndSorts(requests);
+  const sortedReq = [...requests].sort((a, b) =>
+    b.guestCount - a.guestCount ||
+    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+    (a.song || '').localeCompare(b.song || '')
+  );
+
+  const sortedPlayed = [...played].sort((a, b) =>
+    (a.song || '').localeCompare(b.song || '')
+  );
+
+  const sortedRemoved = [...removed].sort((a, b) =>
+    (a.song || '').localeCompare(b.song || '')
+  );
+
   renderList(reqList, sortedReq,
-    function(obj){ const el = buildCardBase(obj); attachRequestActions(el); return el; },
-    function(node,obj){ updateCardBase(node,obj); }
+    (obj) => {
+      const el = buildCardBase(obj);
+      attachRequestActions(el);
+      return el;
+    },
+    (node, obj) => {
+      updateCardBase(node, obj);
+      attachRequestActions(node);
+    }
   );
 
-  const playedSorted = played.slice().sort((a,b)=>(a.song || '').localeCompare(b.song || ''));
-  renderList(playedList, playedSorted,
-    function(obj){ const el = buildCardBase(obj); attachPlayedActions(el); return el; },
-    function(node,obj){ updateCardBase(node,obj); }
+  renderList(playedList, sortedPlayed,
+    (obj) => {
+      const el = buildCardBase(obj);
+      attachPlayedActions(el);
+      return el;
+    },
+    (node, obj) => {
+      updateCardBase(node, obj);
+      attachPlayedActions(node);
+    }
   );
 
-  const removedSorted = removed.slice().sort((a,b)=>(a.song || '').localeCompare(b.song || ''));
-  renderList(removedList, removedSorted,
-    function(obj){ const el = buildCardBase(obj); attachRemovedActions(el); return el; },
-    function(node,obj){ updateCardBase(node,obj); }
+  renderList(removedList, sortedRemoved,
+    (obj) => {
+      const el = buildCardBase(obj);
+      attachRemovedActions(el);
+      return el;
+    },
+    (node, obj) => {
+      updateCardBase(node, obj);
+      attachRemovedActions(node);
+    }
   );
 
-  spamList.innerHTML = '';
-  spam.forEach(function(s){
-    const el = document.createElement('div');
-    el.className = 'card';
-    el.dataset.key = s.key;
-    el.innerHTML = `
-      <img class="thumb" alt="">
-      <div class="meta">
-        <p class="title">${escapeHTML(s.song || 'Unknown Title')}</p>
-        <p class="sub">${escapeHTML(s.artist || 'Unknown Artist')}</p>
-        <p class="sub">Requester: ${escapeHTML(s.name || 'Guest')}</p>
-        <div class="spam-reason">Reason: ${escapeHTML(s.reason || 'spam_detected')}</div>
-      </div>
-      <div class="actions"></div>
-    `;
-    getArtwork(s.song, s.artist).then(function(src){
-      if(src){ el.querySelector('.thumb').src = src; }
-    });
-    spamList.appendChild(el);
-  });
+  renderSpamList(spam);
 
-  reqCountEl.textContent = '(' + reqList.children.length + ')';
-  playedCountEl.textContent = '(' + playedList.children.length + ')';
-  removedCountEl.textContent = '(' + removedList.children.length + ')';
-  spamCountTop.textContent = '(' + spamList.children.length + ')';
+  reqCountEl.textContent = `(${sortedReq.length})`;
+  playedCountEl.textContent = `(${sortedPlayed.length})`;
+  removedCountEl.textContent = `(${sortedRemoved.length})`;
+  spamCountTop.textContent = `(${spam.length})`;
 }
 
 function initCollapsibles(){
-  document.querySelectorAll('.collapsible-header').forEach(function(h){
-    h.addEventListener('click', function(){
+  document.querySelectorAll('.collapsible-header').forEach(h => {
+    h.addEventListener('click', () => {
       const p = h.parentElement;
       p.classList.toggle('open');
       const t = h.querySelector('.twist');
-      if(t) t.textContent = p.classList.contains('open') ? '▾' : '▸';
+      if (t){
+        t.textContent = p.classList.contains('open') ? '▾' : '▸';
+      }
     });
   });
 }
 
 function setTab(which){
-  if(which === 'spam'){
+  if (which === 'spam'){
     tabSpamBtn.classList.add('active');
     tabRequestsBtn.classList.remove('active');
     tabSpamPane.classList.remove('hidden');
     tabRequestsPane.classList.add('hidden');
-  } else {
-    tabRequestsBtn.classList.add('active');
-    tabSpamBtn.classList.remove('active');
-    tabRequestsPane.classList.remove('hidden');
-    tabSpamPane.classList.add('hidden');
+    return;
   }
+
+  tabRequestsBtn.classList.add('active');
+  tabSpamBtn.classList.remove('active');
+  tabRequestsPane.classList.remove('hidden');
+  tabSpamPane.classList.add('hidden');
 }
 
-tabRequestsBtn.addEventListener('click', function(){ setTab('requests'); });
-tabSpamBtn.addEventListener('click', function(){ setTab('spam'); });
+tabRequestsBtn.addEventListener('click', () => setTab('requests'));
+tabSpamBtn.addEventListener('click', () => setTab('spam'));
 
-sortSel.addEventListener('change', function(){ renderAll(rowsCache); });
-filterSel.addEventListener('change', function(){ renderAll(rowsCache); });
-vipFilterSel.addEventListener('change', function(){ renderAll(rowsCache); });
-
-markVipBtn.addEventListener('click', async function(){
-  const name = requesterVipSel.value;
-  if (!name){
-    statusLine.textContent = 'Select a requester first.';
-    return;
-  }
-  await setVipNameStatus(name, true);
-});
-
-removeVipBtn.addEventListener('click', async function(){
-  const name = requesterVipSel.value || vipFilterSel.value;
-  if (!name){
-    statusLine.textContent = 'Select a VIP name first.';
-    return;
-  }
-  await setVipNameStatus(name, false);
-});
-
-eventSel.addEventListener('change', async function(){
+eventSel.addEventListener('change', async () => {
   currentCode = eventSel.value || '';
-  initialRequestsLoaded = false;
   rowsCache = [];
-  vipNames = [];
-  updateVipUi();
-  await loadVipNames();
-  await fetchRows({ background:false });
+  vipNamesCache = [];
+  setVipMeta([]);
+  latestFetchIssued = 0;
+  latestFetchApplied = 0;
+  await fetchRows({ background: false });
   startPolling();
 });
 
 (async function boot(){
-  await loadActiveEvents();
   initCollapsibles();
   setTab('requests');
+  await loadActiveEvents();
 
-  if(eventSel.value){
-    currentCode = eventSel.value;
-    initialRequestsLoaded = false;
-    await loadVipNames();
-    await fetchRows({ background:false });
+  if (eventSel.value){
+    currentCode = eventSel.value || '';
+    await fetchRows({ background: false });
     startPolling();
   }
 })();
