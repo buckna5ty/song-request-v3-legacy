@@ -17,6 +17,8 @@
     --danger:#b22222;
     --put:#d81b60;
     --vip:#d4af37;
+    --vip-bg:rgba(212,175,55,.10);
+    --vip-border:rgba(212,175,55,.55);
     --radius:12px;
     --maxw:1100px;
   }
@@ -105,6 +107,11 @@
   .inline-text.good{ color:#34d399; }
   .inline-text.bad{ color:#ef4444; }
   .inline-text.warn{ color:#f7b731; }
+
+  .meta-inline{
+    color:#d8d8d8;
+    font-size:13px;
+  }
 
   .progress{
     position:relative;
@@ -235,6 +242,15 @@
     grid-template-columns:64px 1fr 190px;
     gap:12px;
     align-items:start;
+    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+
+  .card.vip-card{
+    border-color:var(--vip-border);
+    background:
+      linear-gradient(0deg, var(--vip-bg), var(--vip-bg)),
+      var(--section);
+    box-shadow:0 0 0 1px rgba(212,175,55,.18) inset;
   }
 
   @media (max-width:760px){
@@ -304,6 +320,19 @@
     font-weight:700;
   }
 
+  .vip-chip{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 8px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.04em;
+    background:rgba(212,175,55,.12);
+    border:1px solid rgba(212,175,55,.45);
+    color:#f7d774;
+  }
+
   .names-box{
     margin-top:6px;
     background:var(--subsection);
@@ -330,6 +359,12 @@
     margin:3px 0;
     color:#fafafa;
     font-size:13px;
+  }
+
+  .vip-star{
+    color:var(--vip);
+    font-weight:900;
+    margin-left:6px;
   }
 
   .actions{
@@ -380,6 +415,18 @@
     color:#fff;
   }
 
+  .btn.vipadd{
+    background:#d4af37;
+    border-color:#d4af37;
+    color:#111;
+  }
+
+  .btn.vipremove{
+    background:#8d6e00;
+    border-color:#8d6e00;
+    color:#fff;
+  }
+
   .btn[disabled]{
     opacity:.65;
     cursor:not-allowed;
@@ -414,6 +461,7 @@
         <span id="inlineText" class="inline-text"></span>
         <div id="inlineProgress" class="progress"></div>
         <span id="inlineSpin" class="spin" aria-hidden="true"></span>
+        <span id="vipMeta" class="meta-inline"></span>
       </div>
     </div>
 
@@ -476,6 +524,7 @@ const eventSel = $('#eventSel');
 const inlineText = $('#inlineText');
 const inlineProgress = $('#inlineProgress');
 const inlineSpin = $('#inlineSpin');
+const vipMeta = $('#vipMeta');
 
 const tabRequestsBtn = $('#tabRequests');
 const tabSpamBtn = $('#tabSpam');
@@ -499,6 +548,7 @@ let pollTimer = null;
 let isFetchingRows = false;
 let isLoadingEvents = false;
 let artCache = new Map();
+let vipTokenSet = new Set();
 
 function safeString(v){
   return String(v || '').trim();
@@ -547,6 +597,14 @@ function normalizePlayedStatus(row){
 function normalizeSpamStatus(row){
   const s = safeString(row?.spam_status).toLowerCase();
   return s || 'clean';
+}
+
+function isRowVip(row){
+  return !!row?.is_vip;
+}
+
+function setVipMeta(){
+  vipMeta.textContent = currentCode ? `VIPs for this event: ${vipTokenSet.size}` : '';
 }
 
 function showFullLoading(msg='Loading your requests...'){
@@ -685,6 +743,8 @@ async function loadActiveEvents(){
       opt.textContent = 'No active events';
       eventSel.appendChild(opt);
       currentCode = '';
+      vipTokenSet = new Set();
+      setVipMeta();
       showEventsError();
       return;
     }
@@ -711,6 +771,27 @@ async function loadActiveEvents(){
   }
 }
 
+async function loadVipList(){
+  if (!currentCode){
+    vipTokenSet = new Set();
+    setVipMeta();
+    return;
+  }
+
+  try{
+    const rows = await rpc('api_get_event_vips', { p_event_code: currentCode });
+    vipTokenSet = new Set(
+      (Array.isArray(rows) ? rows : [])
+        .map(r => safeString(r.client_token))
+        .filter(Boolean)
+    );
+    setVipMeta();
+  }catch{
+    vipTokenSet = new Set();
+    setVipMeta();
+  }
+}
+
 function stopPolling(){
   if (pollTimer){
     clearInterval(pollTimer);
@@ -734,9 +815,20 @@ async function fetchRows({ background = false } = {}){
   else showSpinnerOnly('Refreshing...');
 
   try{
-    const raw = await rpc('api_read_event_requests', { p_event_code: currentCode });
-    rowsCache = Array.isArray(raw) ? raw.map(x => ({ ...x })) : [];
+    const [rawRows, vipRows] = await Promise.all([
+      rpc('api_read_event_requests', { p_event_code: currentCode }),
+      rpc('api_get_event_vips', { p_event_code: currentCode })
+    ]);
+
+    rowsCache = Array.isArray(rawRows) ? rawRows.map(x => ({ ...x })) : [];
+    vipTokenSet = new Set(
+      (Array.isArray(vipRows) ? vipRows : [])
+        .map(r => safeString(r.client_token))
+        .filter(Boolean)
+    );
+
     renderAll(rowsCache);
+    setVipMeta();
     setStatusMessage('');
   }catch{
     setStatusMessage('Connection error.', true);
@@ -772,78 +864,105 @@ function splitBuckets(rows){
           artist,
           name: safeString(row.name) || 'Guest',
           count: 0,
-          spam_status: spamStatus
+          spam_status: spamStatus,
+          is_vip: isRowVip(row)
         };
         spamMap.set(spamKey, sg);
       }
       sg.count += 1;
+      if (isRowVip(row)) sg.is_vip = true;
       continue;
     }
 
-    if (playedStatus === 'played'){
-      let g = playedMap.get(k);
-      if (!g){
-        g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
-        playedMap.set(k, g);
-      }
-      g.ids.push(row.id);
-      if (row.name) g.names.add(row.name);
-      if (!g.link && link) g.link = link;
-      continue;
-    }
+    const targetMap =
+      playedStatus === 'played' ? playedMap :
+      playedStatus === 'removed' ? removedMap :
+      requestMap;
 
-    if (playedStatus === 'removed'){
-      let g = removedMap.get(k);
-      if (!g){
-        g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
-        removedMap.set(k, g);
-      }
-      g.ids.push(row.id);
-      if (row.name) g.names.add(row.name);
-      if (!g.link && link) g.link = link;
-      continue;
-    }
-
-    let g = requestMap.get(k);
+    let g = targetMap.get(k);
     if (!g){
-      g = { key:k, song, artist, ids:[], names:new Set(), link:'' };
-      requestMap.set(k, g);
+      g = {
+        key:k,
+        song,
+        artist,
+        ids:[],
+        rows:[],
+        peopleMap:new Map(),
+        link:'',
+        hasVip:false
+      };
+      targetMap.set(k, g);
     }
+
     g.ids.push(row.id);
-    if (row.name) g.names.add(row.name);
+    g.rows.push(row);
+
+    const personKey = safeString(row.name || 'Guest').toLowerCase();
+    if (!g.peopleMap.has(personKey)){
+      g.peopleMap.set(personKey, {
+        name: safeString(row.name) || 'Guest',
+        isVip: isRowVip(row)
+      });
+    } else if (isRowVip(row)) {
+      g.peopleMap.get(personKey).isVip = true;
+    }
+
     if (!g.link && link) g.link = link;
+    if (isRowVip(row)) g.hasVip = true;
   }
 
-  const requests = [...requestMap.values()].map(g => ({
-    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
-  }));
+  function finalizeGroup(g){
+    const people = [...g.peopleMap.values()].sort((a,b) => {
+      if (a.isVip !== b.isVip) return a.isVip ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
 
-  const played = [...playedMap.values()].map(g => ({
-    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
-  }));
+    const vipRow = g.rows.find(r => isRowVip(r)) || g.rows[0] || null;
 
-  const removed = [...removedMap.values()].map(g => ({
-    key:g.key, song:g.song, artist:g.artist, ids:g.ids, people:[...g.names], link:g.link
-  }));
+    return {
+      key:g.key,
+      song:g.song,
+      artist:g.artist,
+      ids:g.ids,
+      rows:g.rows,
+      people,
+      peopleCount: people.length,
+      link:g.link,
+      hasVip:g.hasVip,
+      vipRow
+    };
+  }
 
+  const requests = [...requestMap.values()].map(finalizeGroup);
+  const played = [...playedMap.values()].map(finalizeGroup);
+  const removed = [...removedMap.values()].map(finalizeGroup);
   const spam = [...spamMap.values()].sort((a,b) => b.count - a.count || a.song.localeCompare(b.song));
 
   return { requests, played, removed, spam };
 }
 
-function namesBoxHTML(names){
-  return `<div class="names-box"><p class="hdr">Requesters</p><ul>${names.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul></div>`;
+function namesBoxHTML(people){
+  return `
+    <div class="names-box">
+      <p class="hdr">Requesters</p>
+      <ul>
+        ${people.map(p => `<li>${escapeHTML(p.name)}${p.isVip ? '<span class="vip-star">★</span>' : ''}</li>`).join('')}
+      </ul>
+    </div>
+  `;
 }
 
 function buildCardBase(obj){
-  const guests = obj.people.length;
+  const guests = obj.peopleCount;
   const el = document.createElement('div');
-  el.className = 'card';
+  el.className = `card${obj.hasVip ? ' vip-card' : ''}`;
   el.dataset.key = obj.key;
   el.dataset.ids = JSON.stringify(obj.ids);
   el.dataset.song = obj.song || '';
   el.dataset.artist = obj.artist || '';
   el.dataset.link = obj.link || '';
+  el.dataset.vipClientToken = safeString(obj.vipRow?.client_token || '');
+  el.dataset.vipDisplayName = safeString(obj.vipRow?.name || '');
 
   el.innerHTML = `
     <img class="thumb" alt="">
@@ -851,6 +970,7 @@ function buildCardBase(obj){
       <p class="title" title="Open in Spotify">${escapeHTML(obj.song || 'Unknown Title')}</p>
       <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
       <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${guests} guest${guests === 1 ? '' : 's'}</span></div>
+      ${obj.hasVip ? '<div class="vip-chip">VIP REQUEST</div>' : ''}
       ${namesBoxHTML(obj.people)}
     </div>
     <div class="actions"></div>
@@ -864,59 +984,84 @@ function buildCardBase(obj){
     }
   });
 
+  bindCardInteractions(el);
+  return el;
+}
+
+function bindCardInteractions(el){
   const box = el.querySelector('.names-box');
   const reqline = el.querySelector('.reqline');
   const car = reqline.querySelector('.car');
 
-  reqline.addEventListener('click', () => {
+  reqline.onclick = () => {
     const open = box.classList.toggle('open');
     car.textContent = open ? '▾' : '▸';
-  });
+  };
 
   const titleEl = el.querySelector('.title');
   const artistEl = el.querySelector('.sub');
   const thumbEl = el.querySelector('.thumb');
 
-  titleEl.addEventListener('click', () => {
+  titleEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'track'
     }));
-  });
+  };
 
-  artistEl.addEventListener('click', () => {
+  artistEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'artist'
     }));
-  });
+  };
 
-  thumbEl.addEventListener('click', () => {
+  thumbEl.onclick = () => {
     openSpotifyUri(spotifyUriFromLinkOrSearch({
       link: el.dataset.link,
       song: el.dataset.song,
       artist: el.dataset.artist,
       kind: 'album'
     }));
-  });
-
-  return el;
+  };
 }
 
 function updateCardBase(node, obj){
+  const currentlyOpen = node.querySelector('.names-box')?.classList.contains('open');
+
+  node.className = `card${obj.hasVip ? ' vip-card' : ''}`;
   node.dataset.ids = JSON.stringify(obj.ids);
   node.dataset.song = obj.song || '';
   node.dataset.artist = obj.artist || '';
   node.dataset.link = obj.link || '';
+  node.dataset.vipClientToken = safeString(obj.vipRow?.client_token || '');
+  node.dataset.vipDisplayName = safeString(obj.vipRow?.name || '');
 
   node.querySelector('.title').textContent = obj.song || 'Unknown Title';
   node.querySelector('.sub').textContent = obj.artist || 'Unknown Artist';
-  node.querySelector('.txt').textContent = `Requested by ${obj.people.length} guest${obj.people.length === 1 ? '' : 's'}`;
-  node.querySelector('.names-box').innerHTML = `<p class="hdr">Requesters</p><ul>${obj.people.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul>`;
+  node.querySelector('.txt').textContent = `Requested by ${obj.peopleCount} guest${obj.peopleCount === 1 ? '' : 's'}`;
+
+  const oldChip = node.querySelector('.vip-chip');
+  if (obj.hasVip && !oldChip){
+    node.querySelector('.reqline').insertAdjacentHTML('afterend', '<div class="vip-chip">VIP REQUEST</div>');
+  }
+  if (!obj.hasVip && oldChip){
+    oldChip.remove();
+  }
+
+  node.querySelector('.names-box').outerHTML = namesBoxHTML(obj.people);
+  bindCardInteractions(node);
+
+  if (currentlyOpen){
+    const box = node.querySelector('.names-box');
+    const car = node.querySelector('.reqline .car');
+    box.classList.add('open');
+    car.textContent = '▾';
+  }
 }
 
 async function setStatusForIds(ids, status){
@@ -940,54 +1085,118 @@ async function setStatusForIds(ids, status){
   }
 }
 
+async function setVipForToken(eventCode, clientToken, displayName, makeVip){
+  if (!eventCode || !clientToken) return;
+
+  showSpinnerOnly(makeVip ? 'Adding VIP...' : 'Removing VIP...');
+  setStatusMessage('');
+
+  try{
+    if (makeVip){
+      await rpc('api_add_vip', {
+        p_event_code: eventCode,
+        p_client_token: clientToken,
+        p_display_name: displayName || ''
+      });
+    } else {
+      await rpc('api_remove_vip', {
+        p_event_code: eventCode,
+        p_client_token: clientToken
+      });
+    }
+
+    await fetchRows({ background: false });
+  }catch{
+    setStatusMessage('Could not update VIP status.', true);
+  }finally{
+    clearInline();
+  }
+}
+
+function attachVipAction(card){
+  const token = safeString(card.dataset.vipClientToken);
+  if (!token) return '';
+
+  const isVip = vipTokenSet.has(token);
+  return `
+    <button class="btn ${isVip ? 'vipremove' : 'vipadd'}" type="button" data-role="vip-toggle">
+      ${isVip ? 'Remove VIP' : 'Add VIP'}
+    </button>
+  `;
+}
+
+function wireVipAction(card){
+  const btn = card.querySelector('[data-role="vip-toggle"]');
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    const token = safeString(card.dataset.vipClientToken);
+    const displayName = safeString(card.dataset.vipDisplayName);
+    const makeVip = !vipTokenSet.has(token);
+
+    card.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    await setVipForToken(currentCode, token, displayName, makeVip);
+    card.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  };
+}
+
 function attachRequestActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn played" type="button">Mark as Played</button>
     <button class="btn remove" type="button">Remove</button>
+    ${attachVipAction(card)}
   `;
 
-  actions.querySelector('.btn.played').addEventListener('click', async () => {
+  actions.querySelector('.btn.played').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'played');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
+  };
 
-  actions.querySelector('.btn.remove').addEventListener('click', async () => {
+  actions.querySelector('.btn.remove').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'removed');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
+  };
+
+  wireVipAction(card);
 }
 
 function attachPlayedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn unplayed" type="button">Mark as Unplayed</button>
+    ${attachVipAction(card)}
   `;
 
-  actions.querySelector('.btn.unplayed').addEventListener('click', async () => {
+  actions.querySelector('.btn.unplayed').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'not played');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
+  };
+
+  wireVipAction(card);
 }
 
 function attachRemovedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn putback" type="button">Put Back</button>
+    ${attachVipAction(card)}
   `;
 
-  actions.querySelector('.btn.putback').addEventListener('click', async () => {
+  actions.querySelector('.btn.putback').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'not played');
     actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  });
+  };
+
+  wireVipAction(card);
 }
 
 function renderList(container, items, makeNode, updateNode){
@@ -1032,14 +1241,18 @@ function renderAll(rows){
   const { requests, played, removed, spam } = splitBuckets(rows);
 
   const sortedReq = [...requests].sort((a,b) =>
-    b.people.length - a.people.length || (a.song || '').localeCompare(b.song || '')
+    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+    b.peopleCount - a.peopleCount ||
+    (a.song || '').localeCompare(b.song || '')
   );
 
   const sortedPlayed = [...played].sort((a,b) =>
+    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
     (a.song || '').localeCompare(b.song || '')
   );
 
   const sortedRemoved = [...removed].sort((a,b) =>
+    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
     (a.song || '').localeCompare(b.song || '')
   );
 
@@ -1061,16 +1274,17 @@ function renderAll(rows){
   spamList.innerHTML = '';
   if (!spam.length){
     spamList.innerHTML = `<div class="empty-state">No spammed requests.</div>`;
-  }else{
+  } else {
     for (const s of spam){
       const el = document.createElement('div');
-      el.className = 'card';
+      el.className = `card${s.is_vip ? ' vip-card' : ''}`;
       el.innerHTML = `
         <img class="thumb" alt="">
         <div class="meta">
           <p class="title">${escapeHTML(s.song || 'Unknown Title')}</p>
           <p class="sub">${escapeHTML(s.artist || 'Unknown Artist')}</p>
-          <p class="sub">Requested by ${escapeHTML(s.name || 'Guest')} (x${s.count})</p>
+          <p class="sub">Requested by ${escapeHTML(s.name || 'Guest')} (x${s.count})${s.is_vip ? ' <span class="vip-star">★</span>' : ''}</p>
+          ${s.is_vip ? '<div class="vip-chip">VIP REQUEST</div>' : ''}
         </div>
         <div class="actions"></div>
       `;
@@ -1117,6 +1331,8 @@ tabSpamBtn.addEventListener('click', () => setTab('spam'));
 
 eventSel.addEventListener('change', async () => {
   currentCode = eventSel.value || '';
+  vipTokenSet = new Set();
+  setVipMeta();
   await fetchRows({ background:false });
   startPolling();
 });
