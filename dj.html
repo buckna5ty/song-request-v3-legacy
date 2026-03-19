@@ -254,7 +254,7 @@
     border-radius:12px;
     padding:10px;
     display:grid;
-    grid-template-columns:64px 1fr 190px;
+    grid-template-columns:64px 1fr 210px;
     gap:12px;
     align-items:start;
     transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
@@ -281,7 +281,6 @@
     object-fit:cover;
     display:block;
     align-self:start;
-    cursor:pointer;
   }
 
   .meta{ min-width:0; }
@@ -294,10 +293,6 @@
     overflow:hidden;
     text-overflow:ellipsis;
     color:#fff;
-    cursor:pointer;
-    text-decoration:underline;
-    text-decoration-thickness:1px;
-    text-underline-offset:3px;
   }
 
   .sub{
@@ -307,10 +302,6 @@
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    cursor:pointer;
-    text-decoration:underline;
-    text-decoration-thickness:1px;
-    text-underline-offset:3px;
   }
 
   .reqline{
@@ -448,9 +439,25 @@
     border:1px solid transparent;
     cursor:pointer;
     box-shadow:0 2px 0 rgba(0,0,0,.35), 0 8px 14px rgba(0,0,0,.15);
-    width:82%;
+    width:86%;
     margin:0 auto;
     font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    gap:6px;
+  }
+
+  .btn-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.04em;
+    background:rgba(0,0,0,.22);
+    color:inherit;
   }
 
   .btn:hover,
@@ -480,6 +487,18 @@
     background:var(--put);
     border-color:var(--put);
     color:#fff;
+  }
+
+  .btn.vdj{
+    background:#4c6ef5;
+    border-color:#4c6ef5;
+    color:#fff;
+  }
+
+  .btn.spotify{
+    background:#1db954;
+    border-color:#1db954;
+    color:#000;
   }
 
   .btn[disabled]{
@@ -598,6 +617,10 @@ const SUPABASE_URL = 'https://anaofamvuusuemccfnkp.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oNLSe8ozVcT3hp65fJNcDg_0058Np2C';
 const POLL_MS = 5000;
 
+const VDJ_HOST = '127.0.0.1';
+const VDJ_PORT = '80';
+const VDJ_BEARER = 'DCEvdjControl2026!';
+
 const $ = s => document.querySelector(s);
 const eventSel = $('#eventSel');
 const sortSel = $('#sortSel');
@@ -696,10 +719,9 @@ function showFullLoading(msg='Loading your requests...'){
   inlineSpin.classList.remove('show');
 }
 
-function showSpinnerOnly(msg=''){
-  inlineText.textContent = msg;
+function showSpinnerOnly(){
+  inlineText.textContent = '';
   inlineText.classList.remove('good', 'bad', 'warn');
-  if (msg) inlineText.classList.add('warn');
   inlineProgress.classList.remove('show');
   inlineSpin.classList.add('show');
 }
@@ -747,49 +769,31 @@ async function rpc(functionName, body){
   }
 }
 
-function spotifyIdFromUrl(url){
-  const s = safeString(url);
-  if (!s) return null;
-
-  let m = s.match(/^spotify:(track|artist|album):([A-Za-z0-9]+)$/i);
-  if (m) return { type: m[1].toLowerCase(), id: m[2] };
-
-  m = s.match(/open\.spotify\.com\/(track|artist|album)\/([A-Za-z0-9]+)/i);
-  if (m) return { type: m[1].toLowerCase(), id: m[2] };
-
-  return null;
+function buildSpotifySearchUri(song, artist){
+  const query = `${safeString(song)} ${safeString(artist)}`.trim();
+  return `spotify:search:${encodeURIComponent(query)}`;
 }
 
-function spotifyUriFromLinkOrSearch({ link, song, artist, kind }){
-  const parsed = spotifyIdFromUrl(link);
-
-  if (parsed && parsed.type === kind) return `spotify:${kind}:${parsed.id}`;
-  if (kind === 'track' && parsed && parsed.type === 'track') return `spotify:track:${parsed.id}`;
-
-  const sSong = safeString(song);
-  const sArtist = safeString(artist);
-
-  if (kind === 'artist'){
-    const q = sArtist ? `artist:${sArtist}` : `artist:${sSong}`;
-    return `spotify:search:${encodeURIComponent(q)}`;
-  }
-
-  if (kind === 'album'){
-    const q = sArtist ? `${sSong} ${sArtist}` : sSong;
-    return `spotify:search:${encodeURIComponent(q)}`;
-  }
-
-  if (sSong && sArtist){
-    return `spotify:search:${encodeURIComponent(`track:${sSong} artist:${sArtist}`)}`;
-  }
-
-  return `spotify:search:${encodeURIComponent(sSong || sArtist || '')}`;
-}
-
-function openSpotifyUri(uri){
+function openSpotifySearch(song, artist){
   try{
-    window.location.href = uri;
+    window.location.href = buildSpotifySearchUri(song, artist);
   }catch{}
+}
+
+async function vdjExecute(script){
+  const url = `http://${VDJ_HOST}:${VDJ_PORT}/execute?script=${encodeURIComponent(script)}&bearer=${encodeURIComponent(VDJ_BEARER)}`;
+  const res = await fetch(url, { method:'GET' });
+  const text = await res.text();
+  if (!res.ok || safeString(text).toLowerCase() !== 'true'){
+    throw new Error(text || 'VDJ command failed');
+  }
+  return text;
+}
+
+async function searchInVdj(song, artist){
+  const query = `${safeString(song)} ${safeString(artist)}`.trim();
+  if (!query) return;
+  await vdjExecute(`search '${query.replace(/'/g, "\\'")}'`);
 }
 
 async function getArtwork(song, artist){
@@ -872,7 +876,7 @@ async function fetchRows({ background = false } = {}){
 
   isFetchingRows = true;
   if (!background) showFullLoading('Loading your requests...');
-  else showSpinnerOnly('Refreshing...');
+  else showSpinnerOnly();
 
   try{
     const [rawRows, vipRows] = await Promise.all([
@@ -1061,8 +1065,8 @@ function buildCardBase(obj){
   el.innerHTML = `
     <img class="thumb" alt="">
     <div class="meta">
-      <p class="title" title="Open in Spotify">${escapeHTML(obj.song || 'Unknown Title')}</p>
-      <p class="sub" title="Open artist in Spotify">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
+      <p class="title">${escapeHTML(obj.song || 'Unknown Title')}</p>
+      <p class="sub">${escapeHTML(obj.artist || 'Unknown Artist')}</p>
       <div class="reqline"><span class="car">▸</span><span class="txt">Requested by ${guests} guest${guests === 1 ? '' : 's'}</span></div>
       ${obj.hasVip ? '<div class="vip-chip">VIP REQUEST</div>' : ''}
       ${namesBoxHTML(obj.people)}
@@ -1090,37 +1094,6 @@ function bindCardInteractions(el){
   reqline.onclick = () => {
     const open = box.classList.toggle('open');
     car.textContent = open ? '▾' : '▸';
-  };
-
-  const titleEl = el.querySelector('.title');
-  const artistEl = el.querySelector('.sub');
-  const thumbEl = el.querySelector('.thumb');
-
-  titleEl.onclick = () => {
-    openSpotifyUri(spotifyUriFromLinkOrSearch({
-      link: el.dataset.link,
-      song: el.dataset.song,
-      artist: el.dataset.artist,
-      kind: 'track'
-    }));
-  };
-
-  artistEl.onclick = () => {
-    openSpotifyUri(spotifyUriFromLinkOrSearch({
-      link: el.dataset.link,
-      song: el.dataset.song,
-      artist: el.dataset.artist,
-      kind: 'artist'
-    }));
-  };
-
-  thumbEl.onclick = () => {
-    openSpotifyUri(spotifyUriFromLinkOrSearch({
-      link: el.dataset.link,
-      song: el.dataset.song,
-      artist: el.dataset.artist,
-      kind: 'album'
-    }));
   };
 
   bindNamesBoxVipButtons(el);
@@ -1161,7 +1134,7 @@ function updateCardBase(node, obj){
 async function setStatusForIds(ids, status){
   if (!Array.isArray(ids) || !ids.length) return;
 
-  showSpinnerOnly('Updating...');
+  showSpinnerOnly();
   setStatusMessage('');
 
   try{
@@ -1182,7 +1155,7 @@ async function setStatusForIds(ids, status){
 async function setVipForToken(eventCode, clientToken, displayName, makeVip){
   if (!eventCode || !clientToken) return;
 
-  showSpinnerOnly(makeVip ? 'Adding VIP...' : 'Removing VIP...');
+  showSpinnerOnly();
   setStatusMessage('');
 
   try{
@@ -1207,9 +1180,53 @@ async function setVipForToken(eventCode, clientToken, displayName, makeVip){
   }
 }
 
+function wireSearchButtons(card){
+  const vdjBtn = card.querySelector('[data-role="vdj-search"]');
+  const spotifyBtn = card.querySelector('[data-role="spotify-search"]');
+
+  if (vdjBtn){
+    vdjBtn.onclick = async () => {
+      const song = safeString(card.dataset.song);
+      const artist = safeString(card.dataset.artist);
+      card.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
+      showSpinnerOnly();
+      setStatusMessage('');
+
+      try{
+        await searchInVdj(song, artist);
+      }catch{
+        setStatusMessage('Could not search in VirtualDJ.', true);
+      }finally{
+        clearInline();
+        card.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
+      }
+    };
+  }
+
+  if (spotifyBtn){
+    spotifyBtn.onclick = () => {
+      openSpotifySearch(card.dataset.song, card.dataset.artist);
+    };
+  }
+}
+
+function addSearchButtonsHtml(){
+  return `
+    <button class="btn vdj" type="button" data-role="vdj-search">
+      <span class="btn-badge">VDJ</span>
+      <span>Search in VDJ</span>
+    </button>
+    <button class="btn spotify" type="button" data-role="spotify-search">
+      <span class="btn-badge">SPOTIFY</span>
+      <span>Search on Spotify</span>
+    </button>
+  `;
+}
+
 function attachRequestActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
+    ${addSearchButtonsHtml()}
     <button class="btn played" type="button">Mark as Played</button>
     <button class="btn remove" type="button">Remove</button>
   `;
@@ -1229,11 +1246,13 @@ function attachRequestActions(card){
   };
 
   bindNamesBoxVipButtons(card);
+  wireSearchButtons(card);
 }
 
 function attachPlayedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
+    ${addSearchButtonsHtml()}
     <button class="btn unplayed" type="button">Mark as Unplayed</button>
   `;
 
@@ -1245,11 +1264,13 @@ function attachPlayedActions(card){
   };
 
   bindNamesBoxVipButtons(card);
+  wireSearchButtons(card);
 }
 
 function attachRemovedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
+    ${addSearchButtonsHtml()}
     <button class="btn putback" type="button">Put Back</button>
   `;
 
@@ -1261,6 +1282,7 @@ function attachRemovedActions(card){
   };
 
   bindNamesBoxVipButtons(card);
+  wireSearchButtons(card);
 }
 
 function renderList(container, items, makeNode, updateNode){
@@ -1389,11 +1411,37 @@ function renderAll(rows){
           <p class="sub">Requested by ${escapeHTML(s.name || 'Guest')} (x${s.count})${s.is_vip ? ' <span class="vip-star">★</span>' : ''}</p>
           ${s.is_vip ? '<div class="vip-chip">VIP REQUEST</div>' : ''}
         </div>
-        <div class="actions"></div>
+        <div class="actions">
+          <button class="btn vdj" type="button" data-role="spam-vdj-search">
+            <span class="btn-badge">VDJ</span>
+            <span>Search in VDJ</span>
+          </button>
+          <button class="btn spotify" type="button" data-role="spam-spotify-search">
+            <span class="btn-badge">SPOTIFY</span>
+            <span>Search on Spotify</span>
+          </button>
+        </div>
       `;
       getArtwork(s.song, s.artist).then(src => {
         if (src) el.querySelector('.thumb').src = src;
       });
+
+      el.querySelector('[data-role="spam-vdj-search"]').onclick = async () => {
+        showSpinnerOnly();
+        setStatusMessage('');
+        try{
+          await searchInVdj(s.song, s.artist);
+        }catch{
+          setStatusMessage('Could not search in VirtualDJ.', true);
+        }finally{
+          clearInline();
+        }
+      };
+
+      el.querySelector('[data-role="spam-spotify-search"]').onclick = () => {
+        openSpotifySearch(s.song, s.artist);
+      };
+
       spamList.appendChild(el);
     }
   }
