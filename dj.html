@@ -88,6 +88,20 @@
     font-size:15px;
     padding:0 12px;
     width:100%;
+    font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .controls-grid{
+    display:grid;
+    grid-template-columns:1fr 220px 220px;
+    gap:12px;
+    align-items:end;
+  }
+
+  @media (max-width:900px){
+    .controls-grid{
+      grid-template-columns:1fr;
+    }
   }
 
   .inline-row{
@@ -179,6 +193,7 @@
     margin:0 6px;
     transform:translateY(1px);
     cursor:pointer;
+    font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
 
   .tab-btn.active{
@@ -395,6 +410,7 @@
     font-weight:700;
     cursor:pointer;
     white-space:nowrap;
+    font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
 
   .person-btn.vipadd{
@@ -434,6 +450,7 @@
     box-shadow:0 2px 0 rgba(0,0,0,.35), 0 8px 14px rgba(0,0,0,.15);
     width:82%;
     margin:0 auto;
+    font-family:"Adventor", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
 
   .btn:hover,
@@ -492,8 +509,32 @@
     <div class="page-title">REQUESTS</div>
 
     <div class="panel">
-      <label for="eventSel">Select Your Event</label>
-      <select id="eventSel"></select>
+      <div class="controls-grid">
+        <div>
+          <label for="eventSel">Select Your Event</label>
+          <select id="eventSel"></select>
+        </div>
+
+        <div>
+          <label for="sortSel">Sort By</label>
+          <select id="sortSel">
+            <option value="most_requested">Most Requested</option>
+            <option value="newest">Newest Request</option>
+            <option value="oldest">Oldest Request</option>
+            <option value="song_az">Song A–Z</option>
+            <option value="artist_az">Artist A–Z</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterSel">Filter By</label>
+          <select id="filterSel">
+            <option value="all">All Requests</option>
+            <option value="vip_only">VIP Only</option>
+            <option value="non_vip_only">Non-VIP Only</option>
+          </select>
+        </div>
+      </div>
 
       <div class="inline-row">
         <span id="inlineText" class="inline-text"></span>
@@ -559,6 +600,8 @@ const POLL_MS = 5000;
 
 const $ = s => document.querySelector(s);
 const eventSel = $('#eventSel');
+const sortSel = $('#sortSel');
+const filterSel = $('#filterSel');
 const inlineText = $('#inlineText');
 const inlineProgress = $('#inlineProgress');
 const inlineSpin = $('#inlineSpin');
@@ -868,6 +911,7 @@ function splitBuckets(rows){
     const k = keySong(song, artist);
     const playedStatus = normalizePlayedStatus(row);
     const spamStatus = normalizeSpamStatus(row);
+    const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : 0;
 
     if (!song && !artist) continue;
 
@@ -883,12 +927,14 @@ function splitBuckets(rows){
           client_token: safeString(row.client_token),
           count: 0,
           spam_status: spamStatus,
-          is_vip: isRowVip(row)
+          is_vip: isRowVip(row),
+          created_at_ms: createdAtMs
         };
         spamMap.set(spamKey, sg);
       }
       sg.count += 1;
       if (isRowVip(row)) sg.is_vip = true;
+      sg.created_at_ms = Math.max(sg.created_at_ms || 0, createdAtMs || 0);
       continue;
     }
 
@@ -906,12 +952,16 @@ function splitBuckets(rows){
         ids:[],
         peopleMap:new Map(),
         link:'',
-        hasVip:false
+        hasVip:false,
+        newestAtMs: createdAtMs || 0,
+        oldestAtMs: createdAtMs || 0
       };
       targetMap.set(k, g);
     }
 
     g.ids.push(row.id);
+    g.newestAtMs = Math.max(g.newestAtMs || 0, createdAtMs || 0);
+    g.oldestAtMs = g.oldestAtMs ? Math.min(g.oldestAtMs, createdAtMs || g.oldestAtMs) : (createdAtMs || 0);
 
     const personToken = safeString(row.client_token);
     const personKey = personToken || `name:${safeString(row.name || 'Guest').toLowerCase()}`;
@@ -944,14 +994,16 @@ function splitBuckets(rows){
       people,
       peopleCount: people.length,
       link:g.link,
-      hasVip:g.hasVip
+      hasVip:g.hasVip,
+      newestAtMs:g.newestAtMs || 0,
+      oldestAtMs:g.oldestAtMs || 0
     };
   }
 
   const requests = [...requestMap.values()].map(finalizeGroup);
   const played = [...playedMap.values()].map(finalizeGroup);
   const removed = [...removedMap.values()].map(finalizeGroup);
-  const spam = [...spamMap.values()].sort((a,b) => b.count - a.count || a.song.localeCompare(b.song));
+  const spam = [...spamMap.values()].sort((a,b) => (b.created_at_ms || 0) - (a.created_at_ms || 0));
 
   return { requests, played, removed, spam };
 }
@@ -1249,24 +1301,63 @@ function renderList(container, items, makeNode, updateNode){
   }
 }
 
+function applyRequestFilter(items){
+  const filter = filterSel.value || 'all';
+  if (filter === 'vip_only') return items.filter(x => x.hasVip);
+  if (filter === 'non_vip_only') return items.filter(x => !x.hasVip);
+  return items;
+}
+
+function sortGroupedItems(items){
+  const sort = sortSel.value || 'most_requested';
+  const arr = [...items];
+
+  arr.sort((a,b) => {
+    if (sort === 'newest'){
+      return (b.newestAtMs || 0) - (a.newestAtMs || 0) ||
+        (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+        b.peopleCount - a.peopleCount ||
+        (a.song || '').localeCompare(b.song || '');
+    }
+
+    if (sort === 'oldest'){
+      return (a.oldestAtMs || 0) - (b.oldestAtMs || 0) ||
+        (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+        b.peopleCount - a.peopleCount ||
+        (a.song || '').localeCompare(b.song || '');
+    }
+
+    if (sort === 'song_az'){
+      return (a.song || '').localeCompare(b.song || '') ||
+        (a.artist || '').localeCompare(b.artist || '') ||
+        ((b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0));
+    }
+
+    if (sort === 'artist_az'){
+      return (a.artist || '').localeCompare(b.artist || '') ||
+        (a.song || '').localeCompare(b.song || '') ||
+        ((b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0));
+    }
+
+    return b.peopleCount - a.peopleCount ||
+      (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
+      (b.newestAtMs || 0) - (a.newestAtMs || 0) ||
+      (a.song || '').localeCompare(b.song || '');
+  });
+
+  return arr;
+}
+
 function renderAll(rows){
   const { requests, played, removed, spam } = splitBuckets(rows);
 
-  const sortedReq = [...requests].sort((a,b) =>
-    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
-    b.peopleCount - a.peopleCount ||
-    (a.song || '').localeCompare(b.song || '')
-  );
+  const filteredRequests = applyRequestFilter(requests);
+  const filteredPlayed = applyRequestFilter(played);
+  const filteredRemoved = applyRequestFilter(removed);
 
-  const sortedPlayed = [...played].sort((a,b) =>
-    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
-    (a.song || '').localeCompare(b.song || '')
-  );
-
-  const sortedRemoved = [...removed].sort((a,b) =>
-    (b.hasVip ? 1 : 0) - (a.hasVip ? 1 : 0) ||
-    (a.song || '').localeCompare(b.song || '')
-  );
+  const sortedReq = sortGroupedItems(filteredRequests);
+  const sortedPlayed = sortGroupedItems(filteredPlayed);
+  const sortedRemoved = sortGroupedItems(filteredRemoved);
 
   renderList(reqList, sortedReq,
     (obj) => { const el = buildCardBase(obj); attachRequestActions(el); return el; },
@@ -1347,6 +1438,14 @@ eventSel.addEventListener('change', async () => {
   setVipMeta();
   await fetchRows({ background:false });
   startPolling();
+});
+
+sortSel.addEventListener('change', () => {
+  renderAll(rowsCache);
+});
+
+filterSel.addEventListener('change', () => {
+  renderAll(rowsCache);
 });
 
 (async function boot(){
