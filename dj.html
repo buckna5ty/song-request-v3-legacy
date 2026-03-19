@@ -555,8 +555,8 @@
 
     <div class="panel">
       <div class="tabs-bar">
-        <button id="tabRequests" class="tab-btn active" type="button">Requests</button>
-        <button id="tabSpam" class="tab-btn" type="button">Spam</button>
+        <button id="tabRequests" class="tab-btn active" type="button">Requests <span id="tabReqCount">(0)</span></button>
+        <button id="tabSpam" class="tab-btn" type="button">Spam <span id="tabSpamCount">(0)</span></button>
       </div>
 
       <div id="tabRequestsPane">
@@ -634,6 +634,8 @@ const reqCountEl = $('#reqCount');
 const playedCountEl = $('#playedCount');
 const removedCountEl = $('#removedCount');
 const spamCountTop = $('#spamCountTop');
+const tabReqCount = $('#tabReqCount');
+const tabSpamCount = $('#tabSpamCount');
 const statusLine = $('#statusLine');
 
 let currentCode = '';
@@ -1241,7 +1243,6 @@ function attachRequestActions(card){
 function attachPlayedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
-    ${addSearchButtonsHtml()}
     <button class="btn unplayed" type="button">Mark as Unplayed</button>
   `;
 
@@ -1253,13 +1254,11 @@ function attachPlayedActions(card){
   };
 
   bindNamesBoxVipButtons(card);
-  wireSearchButtons(card);
 }
 
 function attachRemovedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
-    ${addSearchButtonsHtml()}
     <button class="btn putback" type="button">Put Back</button>
   `;
 
@@ -1271,7 +1270,6 @@ function attachRemovedActions(card){
   };
 
   bindNamesBoxVipButtons(card);
-  wireSearchButtons(card);
 }
 
 function renderList(container, items, makeNode, updateNode){
@@ -1400,35 +1398,11 @@ function renderAll(rows){
           <p class="sub">Requested by ${escapeHTML(s.name || 'Guest')} (x${s.count})${s.is_vip ? ' <span class="vip-star">★</span>' : ''}</p>
           ${s.is_vip ? '<div class="vip-chip">VIP REQUEST</div>' : ''}
         </div>
-        <div class="actions">
-          <button class="btn vdj" type="button" data-role="spam-vdj-search">
-            <span>Search in VDJ</span>
-          </button>
-          <button class="btn spotify" type="button" data-role="spam-spotify-search">
-            <span>Search on Spotify</span>
-          </button>
-        </div>
+        <div class="actions"></div>
       `;
       getArtwork(s.song, s.artist).then(src => {
         if (src) el.querySelector('.thumb').src = src;
       });
-
-      el.querySelector('[data-role="spam-vdj-search"]').onclick = async () => {
-        showSpinnerOnly();
-        setStatusMessage('');
-        try{
-          await searchInVdj(s.song, s.artist);
-        }catch{
-          setStatusMessage('Could not search in VirtualDJ.', true);
-        }finally{
-          clearInline();
-        }
-      };
-
-      el.querySelector('[data-role="spam-spotify-search"]').onclick = () => {
-        openSpotifySearch(s.song, s.artist);
-      };
-
       spamList.appendChild(el);
     }
   }
@@ -1437,6 +1411,8 @@ function renderAll(rows){
   playedCountEl.textContent = `(${sortedPlayed.length})`;
   removedCountEl.textContent = `(${sortedRemoved.length})`;
   spamCountTop.textContent = `(${spam.length})`;
+  tabReqCount.textContent = `(${sortedReq.length})`;
+  tabSpamCount.textContent = `(${spam.length})`;
 }
 
 function initCollapsibles(){
