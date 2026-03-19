@@ -210,7 +210,8 @@
 </div>
 
 <script>
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxh0I4H0szhTlV21aVA9DCMZXNCjIhZBqgiHSjzWnFlpDZQVW_l5FE1T9eUPEWyEmxufg/exec';
+const SUPABASE_URL = 'https://anaofamvuusuemccfnkp.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oNLSe8ozVcT3hp65fJNcDg_0058Np2C';
 const REDIRECT_DELAY_MS = 2200;
 const CLIENT_TOKEN_KEY = 'dce_client_token';
 const EVENT_STORAGE_KEY = 'dce_event';
@@ -236,6 +237,50 @@ function getClientToken(){
     return token;
   }catch{
     return randomToken();
+  }
+}
+
+function normalizeTextForSongKey(s){
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\[.*?\]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildNormalizedSongKey(title, artist){
+  const t = normalizeTextForSongKey(title);
+  const a = normalizeTextForSongKey(artist);
+  if (t && a) return `${t}|${a}`;
+  if (t) return t;
+  if (a) return a;
+  return '';
+}
+
+async function rpc(functionName, body){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+    },
+    body: JSON.stringify(body || {})
+  });
+
+  const text = await res.text();
+  if (!res.ok){
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  try{
+    return JSON.parse(text);
+  }catch{
+    return [];
   }
 }
 
@@ -555,6 +600,7 @@ async function writeRequest(){
   const titleVal=(titleInput.value||'').trim();
   const artistVal=(artistInput.value||'').trim();
   const linkVal=(linkInput.value||'').trim();
+  const normalizedSongKey = buildNormalizedSongKey(titleVal, artistVal);
 
   if (!titleVal && !artistVal){
     setStatus('Pick a song first.');
@@ -571,29 +617,29 @@ async function writeRequest(){
   setBtnLoading(true);
 
   try{
-    const qs = new URLSearchParams({
-      mode:'write',
-      event:EVENT_CODE,
-      name:nameVal,
-      song_title:titleVal,
-      artist:artistVal,
-      link:linkVal,
-      ua:navigator.userAgent,
-      referer:document.referrer||location.href,
-      client_token:CLIENT_TOKEN,
-      session_token:SESSION_TOKEN
+    const data = await rpc('api_write_request', {
+      p_event_code: EVENT_CODE,
+      p_requester_name: nameVal,
+      p_song_title: titleVal,
+      p_artist: artistVal,
+      p_link: linkVal,
+      p_user_agent: navigator.userAgent,
+      p_referrer: document.referrer || location.href,
+      p_client_token: CLIENT_TOKEN,
+      p_session_token: SESSION_TOKEN,
+      p_normalized_song_key: normalizedSongKey
     });
 
-    const data = await jsonp(ENDPOINT_URL + '?' + qs.toString(), 'callback');
     setBtnLoading(false);
 
-    if (!data || data.ok !== true){
-      setStatus((data && data.error) ? data.error : 'Unable to submit request.', true);
+    const row = Array.isArray(data) ? data[0] : null;
+    if (!row || row.ok !== true){
+      setStatus('Unable to submit request.', true);
       return;
     }
 
-    if (data.accepted === false){
-      openDeniedModal(data.userMessage || 'Looks like that song was already sent recently from this device. Try a different song.');
+    if (row.accepted === false){
+      openDeniedModal(row.user_message || 'Looks like that song was already sent recently from this device. Try a different song.');
       setTimeout(()=>{
         closeModal();
       }, REDIRECT_DELAY_MS);
