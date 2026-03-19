@@ -347,24 +347,71 @@
   .names-box .hdr{
     color:#cfcfcf;
     font-size:13px;
-    margin:0 0 4px;
+    margin:0 0 6px;
   }
 
-  .names-box ul{
-    margin:0;
-    padding-left:18px;
+  .names-list{
+    display:grid;
+    gap:6px;
   }
 
-  .names-box li{
-    margin:3px 0;
+  .person-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border:1px solid #505050;
+    border-radius:8px;
+    padding:7px 8px;
+    background:#3d3d3d;
+  }
+
+  .person-left{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .person-name{
     color:#fafafa;
     font-size:13px;
+    word-break:break-word;
   }
 
   .vip-star{
     color:var(--vip);
     font-weight:900;
-    margin-left:6px;
+  }
+
+  .person-btn{
+    height:26px;
+    min-width:88px;
+    padding:0 8px;
+    border-radius:7px;
+    border:1px solid transparent;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  .person-btn.vipadd{
+    background:#d4af37;
+    border-color:#d4af37;
+    color:#111;
+  }
+
+  .person-btn.vipremove{
+    background:#8d6e00;
+    border-color:#8d6e00;
+    color:#fff;
+  }
+
+  .person-btn[disabled]{
+    opacity:.65;
+    cursor:not-allowed;
   }
 
   .actions{
@@ -389,7 +436,10 @@
     margin:0 auto;
   }
 
-  .btn:hover{ filter:brightness(1.05); }
+  .btn:hover,
+  .person-btn:hover{
+    filter:brightness(1.05);
+  }
 
   .btn.played{
     background:var(--accent);
@@ -412,18 +462,6 @@
   .btn.putback{
     background:var(--put);
     border-color:var(--put);
-    color:#fff;
-  }
-
-  .btn.vipadd{
-    background:#d4af37;
-    border-color:#d4af37;
-    color:#111;
-  }
-
-  .btn.vipremove{
-    background:#8d6e00;
-    border-color:#8d6e00;
     color:#fff;
   }
 
@@ -771,27 +809,6 @@ async function loadActiveEvents(){
   }
 }
 
-async function loadVipList(){
-  if (!currentCode){
-    vipTokenSet = new Set();
-    setVipMeta();
-    return;
-  }
-
-  try{
-    const rows = await rpc('api_get_event_vips', { p_event_code: currentCode });
-    vipTokenSet = new Set(
-      (Array.isArray(rows) ? rows : [])
-        .map(r => safeString(r.client_token))
-        .filter(Boolean)
-    );
-    setVipMeta();
-  }catch{
-    vipTokenSet = new Set();
-    setVipMeta();
-  }
-}
-
 function stopPolling(){
   if (pollTimer){
     clearInterval(pollTimer);
@@ -855,7 +872,7 @@ function splitBuckets(rows){
     if (!song && !artist) continue;
 
     if (spamStatus !== 'clean'){
-      const spamKey = `${k}|${safeString(row.name).toLowerCase()}|${spamStatus}`;
+      const spamKey = `${k}|${safeString(row.name).toLowerCase()}|${safeString(row.client_token)}|${spamStatus}`;
       let sg = spamMap.get(spamKey);
       if (!sg){
         sg = {
@@ -863,6 +880,7 @@ function splitBuckets(rows){
           song,
           artist,
           name: safeString(row.name) || 'Guest',
+          client_token: safeString(row.client_token),
           count: 0,
           spam_status: spamStatus,
           is_vip: isRowVip(row)
@@ -886,7 +904,6 @@ function splitBuckets(rows){
         song,
         artist,
         ids:[],
-        rows:[],
         peopleMap:new Map(),
         link:'',
         hasVip:false
@@ -895,12 +912,14 @@ function splitBuckets(rows){
     }
 
     g.ids.push(row.id);
-    g.rows.push(row);
 
-    const personKey = safeString(row.name || 'Guest').toLowerCase();
+    const personToken = safeString(row.client_token);
+    const personKey = personToken || `name:${safeString(row.name || 'Guest').toLowerCase()}`;
+
     if (!g.peopleMap.has(personKey)){
       g.peopleMap.set(personKey, {
         name: safeString(row.name) || 'Guest',
+        client_token: personToken,
         isVip: isRowVip(row)
       });
     } else if (isRowVip(row)) {
@@ -917,19 +936,15 @@ function splitBuckets(rows){
       return a.name.localeCompare(b.name);
     });
 
-    const vipRow = g.rows.find(r => isRowVip(r)) || g.rows[0] || null;
-
     return {
       key:g.key,
       song:g.song,
       artist:g.artist,
       ids:g.ids,
-      rows:g.rows,
       people,
       peopleCount: people.length,
       link:g.link,
-      hasVip:g.hasVip,
-      vipRow
+      hasVip:g.hasVip
     };
   }
 
@@ -945,11 +960,40 @@ function namesBoxHTML(people){
   return `
     <div class="names-box">
       <p class="hdr">Requesters</p>
-      <ul>
-        ${people.map(p => `<li>${escapeHTML(p.name)}${p.isVip ? '<span class="vip-star">★</span>' : ''}</li>`).join('')}
-      </ul>
+      <div class="names-list">
+        ${people.map(p => {
+          const token = safeString(p.client_token);
+          const isVip = !!p.isVip;
+          return `
+            <div class="person-row" data-client-token="${escapeHTML(token)}" data-display-name="${escapeHTML(p.name)}">
+              <div class="person-left">
+                <span class="person-name">${escapeHTML(p.name)}</span>
+                ${isVip ? '<span class="vip-star">★</span>' : ''}
+              </div>
+              ${token ? `<button class="person-btn ${isVip ? 'vipremove' : 'vipadd'}" type="button" data-role="person-vip-toggle">${isVip ? 'Remove VIP' : 'Add VIP'}</button>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
     </div>
   `;
+}
+
+function bindNamesBoxVipButtons(card){
+  card.querySelectorAll('[data-role="person-vip-toggle"]').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const row = btn.closest('.person-row');
+      const token = safeString(row?.dataset.clientToken);
+      const displayName = safeString(row?.dataset.displayName);
+      if (!token) return;
+
+      const makeVip = !vipTokenSet.has(token);
+      card.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
+      await setVipForToken(currentCode, token, displayName, makeVip);
+      card.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
+    };
+  });
 }
 
 function buildCardBase(obj){
@@ -961,8 +1005,6 @@ function buildCardBase(obj){
   el.dataset.song = obj.song || '';
   el.dataset.artist = obj.artist || '';
   el.dataset.link = obj.link || '';
-  el.dataset.vipClientToken = safeString(obj.vipRow?.client_token || '');
-  el.dataset.vipDisplayName = safeString(obj.vipRow?.name || '');
 
   el.innerHTML = `
     <img class="thumb" alt="">
@@ -1028,6 +1070,8 @@ function bindCardInteractions(el){
       kind: 'album'
     }));
   };
+
+  bindNamesBoxVipButtons(el);
 }
 
 function updateCardBase(node, obj){
@@ -1038,8 +1082,6 @@ function updateCardBase(node, obj){
   node.dataset.song = obj.song || '';
   node.dataset.artist = obj.artist || '';
   node.dataset.link = obj.link || '';
-  node.dataset.vipClientToken = safeString(obj.vipRow?.client_token || '');
-  node.dataset.vipDisplayName = safeString(obj.vipRow?.name || '');
 
   node.querySelector('.title').textContent = obj.song || 'Unknown Title';
   node.querySelector('.sub').textContent = obj.artist || 'Unknown Artist';
@@ -1113,90 +1155,60 @@ async function setVipForToken(eventCode, clientToken, displayName, makeVip){
   }
 }
 
-function attachVipAction(card){
-  const token = safeString(card.dataset.vipClientToken);
-  if (!token) return '';
-
-  const isVip = vipTokenSet.has(token);
-  return `
-    <button class="btn ${isVip ? 'vipremove' : 'vipadd'}" type="button" data-role="vip-toggle">
-      ${isVip ? 'Remove VIP' : 'Add VIP'}
-    </button>
-  `;
-}
-
-function wireVipAction(card){
-  const btn = card.querySelector('[data-role="vip-toggle"]');
-  if (!btn) return;
-
-  btn.onclick = async () => {
-    const token = safeString(card.dataset.vipClientToken);
-    const displayName = safeString(card.dataset.vipDisplayName);
-    const makeVip = !vipTokenSet.has(token);
-
-    card.querySelectorAll('.btn').forEach(b => b.disabled = true);
-    await setVipForToken(currentCode, token, displayName, makeVip);
-    card.querySelectorAll('.btn').forEach(b => b.disabled = false);
-  };
-}
-
 function attachRequestActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn played" type="button">Mark as Played</button>
     <button class="btn remove" type="button">Remove</button>
-    ${attachVipAction(card)}
   `;
 
   actions.querySelector('.btn.played').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
   };
 
   actions.querySelector('.btn.remove').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'removed');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
   };
 
-  wireVipAction(card);
+  bindNamesBoxVipButtons(card);
 }
 
 function attachPlayedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn unplayed" type="button">Mark as Unplayed</button>
-    ${attachVipAction(card)}
   `;
 
   actions.querySelector('.btn.unplayed').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
   };
 
-  wireVipAction(card);
+  bindNamesBoxVipButtons(card);
 }
 
 function attachRemovedActions(card){
   const actions = card.querySelector('.actions');
   actions.innerHTML = `
     <button class="btn putback" type="button">Put Back</button>
-    ${attachVipAction(card)}
   `;
 
   actions.querySelector('.btn.putback').onclick = async () => {
     const ids = JSON.parse(card.dataset.ids || '[]');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = true);
     await setStatusForIds(ids, 'not played');
-    actions.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    actions.querySelectorAll('.btn, .person-btn').forEach(b => b.disabled = false);
   };
 
-  wireVipAction(card);
+  bindNamesBoxVipButtons(card);
 }
 
 function renderList(container, items, makeNode, updateNode){
