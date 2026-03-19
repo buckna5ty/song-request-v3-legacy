@@ -663,9 +663,9 @@ async function writeRequest(){
     }
 
     if (row.accepted === false){
-      openDeniedModal(row.user_message || 'Looks like that song was already sent recently from this device.');
-      return;
-    }
+  openDeniedModal(row.user_message || 'Looks like that song was recently submitted from this device.');
+  return;
+}
 
     openSuccessModal();
     setTimeout(()=>{
