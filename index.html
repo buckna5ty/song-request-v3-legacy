@@ -207,15 +207,15 @@
   <div id="debugPill" class="dbg"></div>
 
   <div id="eventClosedNotice" class="event-closed" aria-live="polite" aria-atomic="true">
-    Requests are currently closed for this event. Please see the DJ if you have a question.
+    Requests are currently closed for this event.
   </div>
 
-  <div class="row">
+  <div class="row" id="nameRow">
     <label for="yourName">What's your name?</label>
     <input type="text" id="yourName" autocomplete="name" placeholder="Your name" />
   </div>
 
-  <div class="row" style="margin-top:20px;">
+  <div class="row" id="searchRow" style="margin-top:20px;">
     <label for="q">Search Song, Artist or Lyrics</label>
     <div class="field">
       <input id="q" class="search" type="text" placeholder="Start typing…" autocomplete="off" inputmode="search" />
@@ -241,7 +241,7 @@
   <input type="hidden" id="artist" />
   <input type="hidden" id="link" />
 
-  <div class="actions">
+  <div class="actions" id="actionsRow">
     <button id="submitBtn" class="btn">
       <span class="spin" aria-hidden="true"></span>
       <span class="btntxt">SUBMIT</span>
@@ -267,7 +267,7 @@ const REDIRECT_DELAY_MS = 2200;
 const CLIENT_TOKEN_KEY = 'dce_client_token';
 const EVENT_STORAGE_KEY = 'dce_event';
 
-const CLOSED_MESSAGE = 'Requests are currently closed for this event. Please see the DJ if you have a question.';
+const CLOSED_MESSAGE = 'Requests are currently closed for this event.';
 
 const urlp = new URLSearchParams(location.search);
 const DEBUG = urlp.get('debug') === '1';
@@ -392,7 +392,10 @@ const nameInput = $('#yourName'),
       submitBtn = $('#submitBtn'),
       selTitle = $('#selTitle'),
       selArtist = $('#selArtist'),
-      eventClosedNotice = $('#eventClosedNotice');
+      eventClosedNotice = $('#eventClosedNotice'),
+      nameRow = $('#nameRow'),
+      searchRow = $('#searchRow'),
+      actionsRow = $('#actionsRow');
 let selCoverEl = $('#selCover');
 
 const titleInput = $('#songTitle'),
@@ -452,13 +455,26 @@ function setSubmissionAvailability(isActive){
 
   if (EVENT_IS_ACTIVE){
     eventClosedNotice.classList.remove('show');
+
+    if (nameRow) nameRow.style.display = '';
+    if (searchRow) searchRow.style.display = '';
+    if (actionsRow) actionsRow.style.display = '';
+
     if (!submitBtn.classList.contains('loading')){
       btnTxt.textContent = 'SUBMIT';
     }
+
+    setStatus('');
   } else {
     eventClosedNotice.classList.add('show');
+
+    if (nameRow) nameRow.style.display = 'none';
+    if (searchRow) searchRow.style.display = 'none';
+    if (actionsRow) actionsRow.style.display = 'none';
+
     hideResults();
-    setStatus(CLOSED_MESSAGE, true);
+    hideSelected();
+    setStatus('');
     btnTxt.textContent = 'REQUESTS CLOSED';
   }
 
@@ -472,9 +488,10 @@ function setSubmissionAvailability(isActive){
 }
 
 async function refreshEventAvailability(){
+  eventClosedNotice.textContent = CLOSED_MESSAGE;
+
   if (!EVENT_CODE){
     setSubmissionAvailability(false);
-    setStatus('No event selected. Re-scan the QR and try again.', true);
     return false;
   }
 
@@ -482,7 +499,6 @@ async function refreshEventAvailability(){
     const eventRow = await fetchEventStatus(EVENT_CODE);
     if (!eventRow){
       setSubmissionAvailability(false);
-      setStatus('This event could not be found. Re-scan the QR and try again.', true);
       return false;
     }
 
@@ -496,7 +512,6 @@ async function refreshEventAvailability(){
     return isActive;
   }catch(_err){
     setSubmissionAvailability(false);
-    setStatus('Unable to verify event status right now. Please try again.', true);
     return false;
   }
 }
@@ -777,7 +792,6 @@ async function writeRequest(){
   }
 
   if (!EVENT_CODE){
-    setStatus('No event selected. Re-scan the QR and try again.', true);
     return;
   }
 
