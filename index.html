@@ -262,7 +262,7 @@
 
 <script>
 const SUPABASE_URL = 'https://anaofamvuusuemccfnkp.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oNLSe8ozVcT3hp65fJNcDg_0058Np2C';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oNLSe8ozVcT3hp65fJNcDg_0058NpC';
 const REDIRECT_DELAY_MS = 2200;
 const CLIENT_TOKEN_KEY = 'dce_client_token';
 const EVENT_STORAGE_KEY = 'dce_event';
@@ -341,7 +341,7 @@ async function fetchEventStatus(eventCode){
   if (!eventCode) return null;
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/events?select=code,active&code=eq.${encodeURIComponent(eventCode)}&limit=1`,
+    `${SUPABASE_URL}/rest/v1/events?select=event_code,active&event_code=eq.${encodeURIComponent(eventCode)}&limit=1`,
     {
       method: 'GET',
       headers: {
