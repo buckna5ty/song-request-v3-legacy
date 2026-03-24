@@ -191,8 +191,8 @@
 
   .dbg{
     display:none; width:100%; max-width:var(--field-max); margin:10px auto 0; color:#a7f3d0;
-    background:rgba(45,212,191,.12); border:1px solid rgba(45,212,191,.35); border-radius:999px;
-    padding:6px 12px; font-size:12px;
+    background:rgba(45,212,191,.12); border:1px solid rgba(45,212,191,.35); border-radius:16px;
+    padding:8px 12px; font-size:12px; line-height:1.45; white-space:pre-wrap;
   }
   .dbg.show{ display:block; }
 </style>
@@ -337,9 +337,7 @@ async function rpc(functionName, body){
   }
 }
 
-async function fetchEventStatus(eventCode){
-  if (!eventCode) return null;
-
+async function fetchEventStatusViaRpc(eventCode){
   const data = await rpc('api_read_event_status', {
     p_event_code: eventCode
   });
@@ -349,6 +347,100 @@ async function fetchEventStatus(eventCode){
   }
 
   return data[0];
+}
+
+async function fetchEventStatusDirect(eventCode){
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/events?select=event_code,active&event_code=eq.${encodeURIComponent(eventCode)}&limit=1`,
+    {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  const text = await res.text();
+
+  if (!res.ok){
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  let rows = [];
+  try{
+    rows = JSON.parse(text);
+  }catch{
+    rows = [];
+  }
+
+  if (!Array.isArray(rows) || !rows.length) {
+    return null;
+  }
+
+  return rows[0];
+}
+
+async function fetchEventStatus(eventCode){
+  if (!eventCode) return null;
+
+  let rpcError = null;
+  let directError = null;
+
+  try{
+    const rpcRow = await fetchEventStatusViaRpc(eventCode);
+    if (rpcRow) {
+      if (DEBUG) {
+        showDebug(`Event: ${eventCode}
+Source: RPC
+Active: ${rpcRow.active === true ? 'yes' : 'no'}`);
+      }
+      return rpcRow;
+    }
+
+    if (DEBUG) {
+      showDebug(`Event: ${eventCode}
+Source: RPC
+Result: no rows returned
+Trying direct lookup...`);
+    }
+  }catch(err){
+    rpcError = err instanceof Error ? err.message : String(err);
+    if (DEBUG) {
+      showDebug(`Event: ${eventCode}
+Source: RPC
+Error: ${rpcError}
+Trying direct lookup...`);
+    }
+  }
+
+  try{
+    const directRow = await fetchEventStatusDirect(eventCode);
+    if (directRow) {
+      if (DEBUG) {
+        showDebug(`Event: ${eventCode}
+Source: Direct table lookup
+Active: ${directRow.active === true ? 'yes' : 'no'}`);
+      }
+      return directRow;
+    }
+
+    if (DEBUG) {
+      showDebug(`Event: ${eventCode}
+RPC error: ${rpcError || 'none'}
+Direct lookup: no rows returned`);
+    }
+  }catch(err){
+    directError = err instanceof Error ? err.message : String(err);
+    if (DEBUG) {
+      showDebug(`Event: ${eventCode}
+RPC error: ${rpcError || 'none'}
+Direct lookup error: ${directError}`);
+    }
+  }
+
+  return null;
 }
 
 const CLIENT_TOKEN = getClientToken();
@@ -462,11 +554,10 @@ function setSubmissionAvailability(isActive){
   }
 
   if (DEBUG) {
-    showDebug(
-      EVENT_CODE
-        ? `Event: ${EVENT_CODE} | Active: ${EVENT_IS_ACTIVE ? 'yes' : 'no'} | Client: ${CLIENT_TOKEN.slice(0,8)}...`
-        : `No event detected | Active: ${EVENT_IS_ACTIVE ? 'yes' : 'no'} | Client: ${CLIENT_TOKEN.slice(0,8)}...`
-    );
+    const existing = document.getElementById('debugPill')?.textContent || '';
+    showDebug(`${existing}
+
+Availability applied: ${EVENT_IS_ACTIVE ? 'open' : 'closed'}`);
   }
 }
 
@@ -474,6 +565,9 @@ async function refreshEventAvailability(){
   eventClosedNotice.textContent = CLOSED_MESSAGE;
 
   if (!EVENT_CODE){
+    if (DEBUG) {
+      showDebug(`No event code found in URL, referrer, or localStorage.`);
+    }
     setSubmissionAvailability(false);
     return false;
   }
@@ -481,6 +575,12 @@ async function refreshEventAvailability(){
   try{
     const eventRow = await fetchEventStatus(EVENT_CODE);
     if (!eventRow){
+      if (DEBUG) {
+        const existing = document.getElementById('debugPill')?.textContent || '';
+        showDebug(`${existing}
+
+No matching event row found for this code.`);
+      }
       setSubmissionAvailability(false);
       return false;
     }
@@ -493,7 +593,12 @@ async function refreshEventAvailability(){
     }
 
     return isActive;
-  }catch(_err){
+  }catch(err){
+    if (DEBUG) {
+      showDebug(`Event: ${EVENT_CODE}
+Availability check failed:
+${err instanceof Error ? err.message : String(err)}`);
+    }
     setSubmissionAvailability(false);
     return false;
   }
